@@ -20,17 +20,17 @@
 import bpy
 
 bl_info = {
-	'name': 'BlenderGIS',
+	'name': 'ASC-Importer',
 	'description': 'Various tools for handle geodata',
-	'author': 'domlysz',
+	'author': 'AlexGianelli',
 	'license': 'GPL',
 	'deps': '',
-	'version': (2, 2, 8),
+	'version': (1, 0, 0),
 	'blender': (2, 83, 0),
-	'location': 'View3D > Tools > GIS',
+	'location': 'View3D > Tools > ASC',
 	'warning': '',
-	'wiki_url': 'https://github.com/domlysz/BlenderGIS/wiki',
-	'tracker_url': 'https://github.com/domlysz/BlenderGIS/issues',
+	'wiki_url': '--wiki--',
+	'tracker_url': '--issues--',
 	'link': '',
 	'support': 'COMMUNITY',
 	'category': '3D View'
@@ -50,7 +50,7 @@ from datetime import datetime
 
 def getAppData():
 	home = os.path.expanduser('~')
-	loc = os.path.join(home, '.bgis')
+	loc = os.path.join(home, '.basc')
 	if not os.path.exists(loc):
 		os.mkdir(loc)
 	return loc
@@ -62,7 +62,7 @@ from logging.handlers import RotatingFileHandler
 #temporary set log level, will be overriden reading addon prefs
 #logsFormat = "%(levelname)s:%(name)s:%(lineno)d:%(message)s"
 logsFormat = '{levelname}:{name}:{lineno}:{message}'
-logsFileName = 'bgis.log'
+logsFileName = 'basc.log'
 try:
 	#logsFilePath = os.path.join(os.path.dirname(__file__), logsFileName)
 	logsFilePath = os.path.join(APP_DATA, logsFileName)
@@ -79,7 +79,7 @@ logger.setLevel(logging.DEBUG)
 logger.info('###### Starting new Blender session : {}'.format(datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
 
 def _excepthook(exc_type, exc_value, exc_traceback):
-	if 'BlenderGIS' in exc_traceback.tb_frame.f_code.co_filename:
+	if 'ASC-Importer' in exc_traceback.tb_frame.f_code.co_filename:
 		logger.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
 	sys.__excepthook__(exc_type, exc_value, exc_traceback)
 
@@ -109,8 +109,6 @@ def init(self, *args, **kwargs):
 
 threading.Thread.__init__ = init
 
-####
-
 
 import ssl
 if (not os.environ.get('PYTHONHTTPSVERIFY', '') and
@@ -130,28 +128,46 @@ if IMPORT_ASC:
 import bpy.utils.previews as iconsLib
 icons_dict = {}
 
+class ASC_logs(bpy.types.Operator):
+	bl_idname = "basc.logs"
+	bl_description = 'Display logs'
+	bl_label = "Logs"
 
-class VIEW3D_MT_menu_gis_import(bpy.types.Menu):
+	def execute(self, context):
+		if logsFileName in bpy.data.texts:
+			logs = bpy.data.texts[logsFileName]
+		else:
+			logs = bpy.data.texts.load(logsFilePath)
+		bpy.ops.screen.area_split(direction='VERTICAL', factor=0.5)
+		area = bpy.context.area
+		area.type = 'TEXT_EDITOR'
+		area.spaces[0].text = logs
+		bpy.ops.text.reload()
+		return {'FINISHED'}
+
+class Menu_ASC_import(bpy.types.Menu):
 	bl_label = "Import"
 	def draw(self, context):
 		if IMPORT_ASC:
 			self.layout.operator('importgis.asc_file', icon_value=icons_dict["asc"].icon_id, text="ESRI ASCII Grid (.asc)")
 
-class VIEW3D_MT_menu_gis(bpy.types.Menu):
-	bl_label = "GIS"
+class Menu_ASC(bpy.types.Menu):
+	bl_label = "ASC"
 	# Set the menu operators and draw functions
 	def draw(self, context):
 		layout = self.layout
-		layout.menu('VIEW3D_MT_menu_gis_import', icon='IMPORT')
+		layout.menu('Menu_ASC_import', icon='IMPORT')
+		layout.separator()
+		layout.operator("basc.logs", icon='TEXT')
 
 menus = [
-VIEW3D_MT_menu_gis,
-VIEW3D_MT_menu_gis_import,
+Menu_ASC,
+Menu_ASC_import,
 ]
 
 def add_gis_menu(self, context):
 	if context.mode == 'OBJECT':
-		self.layout.menu('VIEW3D_MT_menu_gis')
+		self.layout.menu('Menu_ASC')
 
 
 def register():
@@ -166,6 +182,8 @@ def register():
 	#operators
 	prefs.register()
 	geoscene.register()
+
+	bpy.utils.register_class(ASC_logs)
 
 	for menu in menus:
 		try:
@@ -201,6 +219,9 @@ def unregister():
 
 	prefs.unregister()
 	geoscene.unregister()
+
+	bpy.utils.unregister_class(ASC_logs)
+
 	if IMPORT_ASC:
 		io_import_asc.unregister()
 
