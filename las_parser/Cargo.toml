@@ -1,0 +1,13 @@
+[package]
+name = "las_parser"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+geo = "0.27.0"
+las = "0.8.1"
+polars = "0.34.2"
+polars-core = "0.34.2"
+polars-io = "0.34.2"
