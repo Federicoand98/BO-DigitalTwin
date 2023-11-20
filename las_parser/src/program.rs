@@ -71,7 +71,7 @@ impl Program {
 
             if point.nir.is_none() {
                 point.nir = Some(0);
-            }
+            } 
 
             for (i, polygon) in polygons.iter().enumerate() {
                 if polygon.contains(&geo::Point::new(point.x, point.y)) {
