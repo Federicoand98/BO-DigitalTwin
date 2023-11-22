@@ -1,6 +1,6 @@
 use geo::{Contains};
 use las::Point;
-use crate::{las_wrapper::{LasReader, LasWriter}, dataframe_wrapper::{DataFrameWrapper, FilterByPosition, Filter}};
+use crate::{las_wrapper::{LasReader, LasWriter}, dataframe_wrapper::{DataFrameWrapper, FilterByPosition, Filter, FilterByTile}};
 use std::{fs, path::PathBuf};
 
 pub struct Program {
@@ -9,7 +9,8 @@ pub struct Program {
     dataframe: Option<DataFrameWrapper>,
     in_folder: String,
     out_folder: String,
-    dataframe_folder: String
+    dataframe_folder: String,
+    file_name: Option<String>,
 }
 
 impl Program {
@@ -21,7 +22,8 @@ impl Program {
             dataframe: None,
             in_folder: in_folder.to_string(),
             out_folder: out_folder.to_string(),
-            dataframe_folder: dataframe_folder.to_string()
+            dataframe_folder: dataframe_folder.to_string(),
+            file_name: None
         }
     }
 
@@ -47,6 +49,7 @@ impl Program {
         let file_name = path.file_name().unwrap().to_str().unwrap();
         let out_path = self.out_folder.clone() + file_name;
 
+        self.file_name = Some(file_name.to_string());
         self.reader = Some(LasReader::new(in_path).unwrap());
         self.writer = Some(LasWriter::new(&out_path, self.reader.as_ref().unwrap().get_header().unwrap()).unwrap());
         self.dataframe = Some(DataFrameWrapper::new(&self.dataframe_folder, b';').unwrap());
@@ -57,8 +60,11 @@ impl Program {
         let points = reader.get_points();
         let mut out_points: Vec<Point>= Vec::new();
 
-        let filter_by_position = FilterByPosition { min_x: 684000.0, min_y: 4930000.0 };
-        let mut filtered_df = filter_by_position.apply(&self.dataframe.as_ref().unwrap()).unwrap();
+        let tile = String::from(self.file_name.as_ref().unwrap());
+        let tile_discr = tile.trim_end_matches(".las");
+
+        let filter_by_tile = FilterByTile { tile: tile_discr.to_string() };
+        let mut filtered_df = filter_by_tile.apply(&self.dataframe.as_ref().unwrap()).unwrap();
 
         let polygons = filtered_df.get_polygons().unwrap();
         let elevations = filtered_df.get_elevations().unwrap();

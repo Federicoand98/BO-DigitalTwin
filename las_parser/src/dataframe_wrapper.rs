@@ -17,6 +17,10 @@ pub struct FilterByPosition {
     pub min_y: f64
 }
 
+pub struct FilterByTile {
+    pub tile: String,
+}
+
 impl Filter for FilterByPosition {
 
     fn apply(&self, df: &DataFrameWrapper) -> Result<DataFrameWrapper, Box<dyn Error>> {
@@ -28,6 +32,24 @@ impl Filter for FilterByPosition {
         let mask_x = new_df.dataframe.column("Geo Point UTM X")?.f64().unwrap().gt(range_x.0) & new_df.dataframe.column("Geo Point UTM X")?.f64().unwrap().lt(range_x.1);
         let mask_y = new_df.dataframe.column("Geo Point UTM Y")?.f64().unwrap().gt(range_y.0) & new_df.dataframe.column("Geo Point UTM Y")?.f64().unwrap().lt(range_y.1);
         let mask = mask_x & mask_y;
+
+        new_df.dataframe = new_df.dataframe.filter(&mask)?;
+
+        Ok(new_df)
+    }
+}
+
+impl Filter for FilterByTile {
+
+    fn apply(&self, df: &DataFrameWrapper) -> Result<DataFrameWrapper, Box<dyn Error>> {
+        let mut new_df = df.clone();
+
+        let mask = new_df.dataframe
+            .column("Tiles")?
+            .utf8()?
+            .into_iter()
+            .map(|v| v.map(|s| s.contains(&self.tile)).unwrap_or(false))
+            .collect::<BooleanChunked>();
 
         new_df.dataframe = new_df.dataframe.filter(&mask)?;
 
