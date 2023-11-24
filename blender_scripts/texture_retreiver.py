@@ -19,8 +19,10 @@ def start():
 
             if not math.isclose(angle, 0, abs_tol=0.01) and not math.isclose(angle, math.pi, abs_tol=0.01):
                 cam = create_camera_at_face(obj, face)
-                # render_face(cam, i, j)
-                # delete_cam(cam)
+                if cam != None:
+                    pass
+                    # render_face(cam, i, j)
+                    # delete_cam(cam)
                 j += 1
 
         print(f"Building {i}: done!")
@@ -28,7 +30,7 @@ def start():
 
 
 def render_face(camera, building_id, face_id):
-    name = f"C:/Users/federico.andrucc.ext/Desktop/DigitalTwin/Textures/image_{building_id}_{face_id}.png"
+    name = f"../Textures/image_{building_id}_{face_id}.png"
     bpy.context.scene.camera = camera
     bpy.context.scene.render.filepath = name
     bpy.ops.render.render(write_still=True)
@@ -50,8 +52,18 @@ def get_max_edge_length(obj, face):
     return max(side_lengths)
 
 
+def get_min_edge_length(obj, face):
+    vertices = [obj.data.vertices[i].co for i in face.vertices]
+    side_lengths = [math.dist(vertices[i], vertices[(i + 1) % len(vertices)]) for i in range(len(vertices))]
+    return min(side_lengths)
+
+
 def create_camera_at_face(obj, face):
     # TODO: trovare un modo più furbo per il centro faccia, per forme strane si rompe
+
+    min_edge = get_min_edge_length(obj, face)
+    if min_edge < 1:
+        return None
 
     center = Vector((0, 0, 0))
     for vertex_idx in face.vertices:
@@ -59,13 +71,14 @@ def create_camera_at_face(obj, face):
     
     center /= len(face.vertices)
 
+    normal = -(obj.matrix_world.to_3x3() @ face.normal)
+
     # Creazione camera
-    bpy.ops.object.camera_add(location=center)
+    bpy.ops.object.camera_add(location=center - normal)
     cam = bpy.context.object
     cam.data.type = 'ORTHO'
 
-    up = -(obj.matrix_world.to_3x3() @ face.normal)
-    cam.rotation_euler = up.to_track_quat('-Z', 'Y').to_euler()
+    cam.rotation_euler = normal.to_track_quat('-Z', 'Y').to_euler()
 
     scale = get_max_edge_length(obj, face)
     cam.data.ortho_scale = scale
