@@ -29,8 +29,15 @@ FetchContent_Declare(
 	GIT_TAG        "4.x"
 	GIT_PROGRESS TRUE
 )
-
+FetchContent_GetProperties(opencv2)
+if (NOT opencv2_POPULATED)
+	FetchContent_Populate(opencv2)
+endif ()
 FetchContent_MakeAvailable(opencv2)
+
+set(OpenCV_DIR ${CMAKE_CURRENT_BINARY_DIR})
+include_directories(${OpenCV_INCLUDE_DIRS})
+find_package(OpenCV REQUIRED)
 
 find_package(PDAL 1.0.0 REQUIRED CONFIG)
 include_directories(${PDAL_INCLUDE_DIRS})
@@ -40,7 +47,7 @@ set(CMAKE_CXX_FLAGS "-std=c++11")
 
 add_executable (roof-builder ${SOURCES} "src/matplotlibcpp.h")
 
-target_link_libraries(${PROJECT_NAME} PRIVATE opencv2 DataFrame ${PDAL_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} PRIVATE DataFrame ${PDAL_LIBRARIES} ${OpenCV_LIBS})
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC ASSETS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/assets/")
 
