@@ -12,6 +12,8 @@ set(CMAKE_CXX_STANDARD 20)
 
 set(LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs")
 
+file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.h")
+
 FetchContent_Declare(
 	DataFrame
 	GIT_REPOSITORY "https://github.com/hosseinmoein/DataFrame.git"
@@ -27,10 +29,9 @@ link_directories(${PDAL_LIBRARY_DIRS})
 add_definitions(${PDAL_DEFINITIONS})
 set(CMAKE_CXX_FLAGS "-std=c++11")
 
-add_executable (roof-builder "roof-builder.cpp" "roof-builder.h")
+add_executable (roof-builder ${SOURCES} "src/matplotlibcpp.h")
 
 target_link_libraries(${PROJECT_NAME} PRIVATE DataFrame ${PDAL_LIBRARIES})
-#target_link_libraries(${PROJECT_NAME} PRIVATE ${PDAL_LIBRARIES})
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC ASSETS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/assets/")
 
