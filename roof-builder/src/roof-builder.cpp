@@ -11,9 +11,7 @@
 #include <pdal/PipelineManager.hpp>
 #include <pdal/StageFactory.hpp>
 #include <pdal/pdal_config.hpp>
-#include "matplotlibcpp.h"
 
-namespace plt = matplotlibcpp;
 
 int main() {
 
