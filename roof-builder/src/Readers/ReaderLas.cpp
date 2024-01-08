@@ -10,16 +10,32 @@ ReaderLas::ReaderLas(const std::string& filename) {
 void ReaderLas::Read() {
     reader->prepare(table);
     pointViewSet = reader->execute(table);
+
+    if (!pointViewSet.empty()) {
+        pdal::PointViewPtr pointView = *pointViewSet.begin();
+        for (pdal::PointId id = 0; id < pointView->size(); ++id) {
+            float x = pointView->getFieldAs<float>(pdal::Dimension::Id::X, id);
+            float y = pointView->getFieldAs<float>(pdal::Dimension::Id::Y, id);
+            float z = pointView->getFieldAs<float>(pdal::Dimension::Id::Z, id);
+            
+            points.push_back(MyPoint(x, y, z));
+        }
+    }
 }
 
-pdal::PointViewSet* ReaderLas::Get() {
+std::vector<MyPoint>* ReaderLas::Get() {
+    return &points;
+}
+
+pdal::PointViewSet* ReaderLas::GetPVS() {
     return &pointViewSet;
 }
 
 void ReaderLas::Flush() {
     options = pdal::Options();
     table.clearSpatialReferences();
-    pointViewSet = pdal::PointViewSet();
+    pointViewSet.clear();
+    points.clear();
 }
 
 

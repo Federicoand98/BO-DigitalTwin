@@ -7,6 +7,7 @@
 #include <filesystem>
 #include "Readers/ReaderLas.h"
 #include "Grid.h"
+#include <geos_c.h>
 
 #include <opencv2/opencv.hpp>
 
@@ -17,16 +18,11 @@ int main() {
 
 			readerLas.Read();
 
-			pdal::PointViewSet* pointViewSet = readerLas.Get();
+			std::vector<MyPoint>* points = readerLas.Get();
 			
-			if (!pointViewSet->empty()) {
-				pdal::PointViewPtr pointView = *pointViewSet->begin();
-				for (pdal::PointId id = 0; id < 5; ++id) {
-					double x = pointView->getFieldAs<double>(pdal::Dimension::Id::X, id);
-					double y = pointView->getFieldAs<double>(pdal::Dimension::Id::Y, id);
-					double z = pointView->getFieldAs<double>(pdal::Dimension::Id::Z, id);
-
-					std::cout << x << " " << y << " " << z << std::endl;
+			if (!points->empty()) {
+				for (auto &p : *points) {
+					//std::cout << p.x << " " << p.y << " " << p.z << std::endl;
 				}
 			}
 

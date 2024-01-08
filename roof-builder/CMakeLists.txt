@@ -35,9 +35,11 @@ if (NOT opencv2_POPULATED)
 endif ()
 FetchContent_MakeAvailable(opencv2)
 
+
 set(OpenCV_DIR ${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${OpenCV_INCLUDE_DIRS})
 find_package(OpenCV REQUIRED)
+
 
 find_package(PDAL 1.0.0 REQUIRED CONFIG)
 include_directories(${PDAL_INCLUDE_DIRS})
@@ -45,9 +47,15 @@ link_directories(${PDAL_LIBRARY_DIRS})
 add_definitions(${PDAL_DEFINITIONS})
 set(CMAKE_CXX_FLAGS "-std=c++11")
 
+find_package(GEOS 1.0.0 REQUIRED CONFIG)
+include_directories(${GEOS_INCLUDE_DIRS})
+link_directories(${GEOS_LIBRARY_DIRS})
+add_definitions(${GEOS_DEFINITIONS})
+set(CMAKE_CXX_FLAGS "-std=c++11")
+
 add_executable (roof-builder ${SOURCES} "src/matplotlibcpp.h")
 
-target_link_libraries(${PROJECT_NAME} PRIVATE DataFrame ${PDAL_LIBRARIES} ${OpenCV_LIBS})
+target_link_libraries(${PROJECT_NAME} PRIVATE DataFrame ${PDAL_LIBRARIES} ${GEOS_LIBRARIES} ${OpenCV_LIBS})
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC ASSETS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/assets/")
 

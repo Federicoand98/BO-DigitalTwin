@@ -7,19 +7,22 @@
 #include <pdal/PipelineManager.hpp>
 
 #include "Reader.h"
+#include "../MyPoint.h"
 
-class ReaderLas : public Reader<pdal::PointViewSet> {
+class ReaderLas : public Reader<std::vector<MyPoint>> {
+public:
+    ReaderLas(const std::string& filename);
+    void Read() override;
+    std::vector<MyPoint>* Get() override;
+    void Flush() override;
+    ~ReaderLas();
+
+    pdal::PointViewSet* GetPVS();
 private:
     pdal::Options options;
     pdal::StageFactory factory;
     pdal::Stage* reader;
     pdal::PointTable table;
     pdal::PointViewSet pointViewSet;
-
-public:
-    ReaderLas(const std::string& filename);
-    void Read() override;
-    pdal::PointViewSet* Get() override;
-    void Flush() override;
-    ~ReaderLas();
+    std::vector<MyPoint> points;
 };
