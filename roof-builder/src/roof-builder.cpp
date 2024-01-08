@@ -6,6 +6,7 @@
 #include <string>
 #include <filesystem>
 #include "Readers/ReaderLas.h"
+#include "Grid.h"
 
 #include <opencv2/opencv.hpp>
 
@@ -43,17 +44,15 @@ int main() {
 		}
 	}
 
-	
 
 	/*
-	
 	cv::Mat image = cv::imread(ASSETS_PATH "canny.png", cv::IMREAD_GRAYSCALE);
 
 	cv::imshow("Immagine", image);
 
 	cv::waitKey(0);
-	
 	*/
+	
 
 	return 0;
 }
