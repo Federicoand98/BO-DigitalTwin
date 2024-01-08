@@ -5,6 +5,7 @@
 #include <fstream>
 #include <string>
 #include <filesystem>
+#include <chrono>
 #include "Readers/ReaderLas.h"
 #include "Grid.h"
 #include <geos_c.h>
@@ -12,6 +13,7 @@
 #include <opencv2/opencv.hpp>
 
 int main() {
+	auto start = std::chrono::high_resolution_clock::now();
 	for (const auto& file : std::filesystem::directory_iterator(ASSETS_PATH "las/")) {
 		try {
 			ReaderLas readerLas(file.path().string());
@@ -39,7 +41,11 @@ int main() {
 			std::cerr << "An unknown error occurred." << std::endl;
 		}
 	}
+	auto end = std::chrono::high_resolution_clock::now();
 
+	std::chrono::duration<double> diff = end - start;
+
+    std::cout << "Tempo trascorso: " << diff.count() << " s\n";
 
 	/*
 	cv::Mat image = cv::imread(ASSETS_PATH "canny.png", cv::IMREAD_GRAYSCALE);

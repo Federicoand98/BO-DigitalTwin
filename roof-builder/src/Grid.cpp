@@ -14,6 +14,36 @@ void Grid::Init(const std::vector<MyPoint>& i_points, float cell_size, float tol
     points.reserve(num_cells_x * num_cells_y);
     height_mat.resize(num_cells_x, std::vector<float>(num_cells_y, 0.0f));
 
+#if MULTITHREADING
+    #pragma omp parallel for
+    for (int i = 0; i < num_cells_x; ++i) {
+        for (int j = 0; j < num_cells_y; ++j) {
+            float x = min_x + i * cell_size;
+            float y = min_y + j * cell_size;
+            float z = 0.0f;
+
+            float min_distance = radius;
+            float closest_z = 0.0f;
+            for (const MyPoint& point : i_points) {
+                float distance = point.distance_xy(MyPoint(x, y, 0.0f));
+                if (distance < min_distance) {
+                    min_distance = distance;
+                    closest_z = point.z;
+                    if (distance <= 0.02f) {
+                        break;
+                    }
+                }
+            }
+            z = closest_z;
+
+            #pragma omp critical 
+            {
+                points.emplace_back(x, y, z);
+                height_mat[i][j] = z;
+            }
+        }
+    }
+#else
     for (int i = 0; i < num_cells_x; ++i) {
         for (int j = 0; j < num_cells_y; ++j) {
             float x = min_x + i * cell_size;
@@ -38,6 +68,7 @@ void Grid::Init(const std::vector<MyPoint>& i_points, float cell_size, float tol
             height_mat[i][j] = z;
         }
     }
+#endif
 }
 
 void Grid::Clear() {
@@ -46,7 +77,7 @@ void Grid::Clear() {
     height_mat.clear();
 }
 
-void Grid::FillHoles(int tol) {
+void Grid::FillHoles(uint16_t tol) {
     std::vector<std::pair<int, int>> kernel;
 
     for (int dx = -1; dx <= 1; ++dx) {
@@ -60,6 +91,10 @@ void Grid::FillHoles(int tol) {
     int rows = height_mat.size();
     int cols = height_mat[0].size();
 
+    std::vector<std::vector<float>> res = height_mat;
+
+#if MULTITHREADING
+    #pragma omp parallel for
     for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < cols; ++j) {
             if (height_mat[i][j] == 0.0f) {
@@ -79,9 +114,74 @@ void Grid::FillHoles(int tol) {
                     }
                 }
                 if (count > tol) {
-                    height_mat[i][j] = sum / static_cast<float>(count);
+                    res[i][j] = sum / static_cast<float>(count);
                 }
             }
         }
     }
+#else
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+            if (height_mat[i][j] == 0.0f) {
+                int count = 0;
+                float sum = 0.0;
+
+                for (auto& [dx, dy] : kernel) {
+                    int ni = i + dx;
+                    int nj = j + dy;
+                    
+                    if (ni >= 0 && ni < rows && nj >= 0 && nj < cols) {
+                        float neighbour = height_mat[ni][nj];
+                        if (neighbour > 0.0f) {
+                            ++count;
+                            sum += neighbour;
+                        } 
+                    }
+                }
+                if (count > tol) {
+                    res[i][j] = sum / static_cast<float>(count);
+                }
+            }
+        }
+    }
+#endif
+    height_mat = res;
+}
+
+std::vector<std::vector<float>> Grid::GetSobelGradient() {
+    std::vector<std::vector<float>> grad(height_mat.size(), std::vector<float>(height_mat[0].size(), 0.0f));
+
+    int Gx[3][3] = {{-1, 0, 1}, {-2, 0, 2}, {-1, 0, 1}};
+    int Gy[3][3] = {{-1, -2, -1}, {0, 0, 0}, {1, 2, 1}};
+
+#if MULTITHREADING
+    #pragma omp parallel for
+    for (int i = 1; i < height_mat.size() - 1; ++i) {
+        for (int j = 1; j < height_mat[i].size() - 1; ++j) {
+            float x = (Gx[0][0] * height_mat[i-1][j-1])  + (Gx[0][2] * height_mat[i-1][j+1]) +
+                      (Gx[1][0] * height_mat[i][j-1])    + (Gx[1][2] * height_mat[i][j+1]) +
+                      (Gx[2][0] * height_mat[i+1][j-1])  + (Gx[2][2] * height_mat[i+1][j+1]);
+
+            float y = (Gy[0][0] * height_mat[i-1][j-1]) + (Gy[0][1] * height_mat[i-1][j]) + (Gy[0][2] * height_mat[i-1][j+1]) +
+                      (Gy[2][0] * height_mat[i+1][j-1]) + (Gy[2][1] * height_mat[i+1][j]) + (Gy[2][2] * height_mat[i+1][j+1]);
+
+            grad[i][j] = std::sqrt(x * x + y * y);
+        }
+    }
+#else
+    for (int i = 1; i < height_mat.size() - 1; ++i) {
+        for (int j = 1; j < height_mat[i].size() - 1; ++j) {
+            float x = (Gx[0][0] * height_mat[i-1][j-1])  + (Gx[0][2] * height_mat[i-1][j+1]) +
+                      (Gx[1][0] * height_mat[i][j-1])    + (Gx[1][2] * height_mat[i][j+1]) +
+                      (Gx[2][0] * height_mat[i+1][j-1])  + (Gx[2][2] * height_mat[i+1][j+1]);
+
+            float y = (Gy[0][0] * height_mat[i-1][j-1]) + (Gy[0][1] * height_mat[i-1][j]) + (Gy[0][2] * height_mat[i-1][j+1]) +
+                      (Gy[2][0] * height_mat[i+1][j-1]) + (Gy[2][1] * height_mat[i+1][j]) + (Gy[2][2] * height_mat[i+1][j+1]);
+
+            grad[i][j] = std::sqrt(x * x + y * y);
+        }
+    }
+#endif
+
+    return grad;
 }

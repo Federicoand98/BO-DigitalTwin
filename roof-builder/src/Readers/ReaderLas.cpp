@@ -13,6 +13,7 @@ void ReaderLas::Read() {
 
     if (!pointViewSet.empty()) {
         pdal::PointViewPtr pointView = *pointViewSet.begin();
+
         for (pdal::PointId id = 0; id < pointView->size(); ++id) {
             float x = pointView->getFieldAs<float>(pdal::Dimension::Id::X, id);
             float y = pointView->getFieldAs<float>(pdal::Dimension::Id::Y, id);

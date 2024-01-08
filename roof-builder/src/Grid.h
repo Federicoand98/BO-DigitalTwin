@@ -3,6 +3,7 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#include <omp.h>
 #include "MyPoint.h"
 
 class Grid {
@@ -11,7 +12,8 @@ public:
     void Init(const std::vector<MyPoint>& i_points, float cell_size, float tol, float radius);
     void Clear();
 
-    void FillHoles(int tol);
+    void FillHoles(uint16_t tol);
+    std::vector<std::vector<float>> GetSobelGradient();
 
     float GetMinX() const { return min_x; }
     float GetMaxX() const { return max_x; }
