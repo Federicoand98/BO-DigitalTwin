@@ -2,7 +2,10 @@
 //
 
 #include "roof-builder.h"
+#include <iostream>
+#include <sstream>
 #include <fstream>
+#include <vector>
 #include <string>
 #include <filesystem>
 #include <chrono>
@@ -10,10 +13,33 @@
 #include "Grid.h"
 #include <geos_c.h>
 
-#include <opencv2/opencv.hpp>
+#include "Building.h"
 
 int main() {
-	auto start = std::chrono::high_resolution_clock::now();
+
+	std::ifstream file(ASSETS_PATH "compactBuildings.csv");
+	std::string line;
+	std::vector<std::string> lines;
+
+	std::vector<std::shared_ptr<Building>> buildings;
+
+	while (std::getline(file, line)) {
+		if (line.find("CODICE_OGGETTO") != std::string::npos)
+			continue;
+
+		lines.push_back(line);
+
+		break;
+	}
+
+	// MULTITHREADING
+	for (std::string line : lines) {
+		
+		std::shared_ptr<Building> building = BuildingFactory::createBuilding(line);
+		buildings.push_back(building);
+	}
+
+	/*
 	for (const auto& file : std::filesystem::directory_iterator(ASSETS_PATH "las/")) {
 		try {
 			ReaderLas readerLas(file.path().string());
@@ -47,14 +73,13 @@ int main() {
 
     std::cout << "Tempo trascorso: " << diff.count() << " s\n";
 
-	/*
+	
 	cv::Mat image = cv::imread(ASSETS_PATH "canny.png", cv::IMREAD_GRAYSCALE);
 
 	cv::imshow("Immagine", image);
 
 	cv::waitKey(0);
 	*/
-	
 
 	return 0;
 }
