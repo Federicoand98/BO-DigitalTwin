@@ -6,15 +6,9 @@
 #include <pdal/io/LasReader.hpp>
 #include <pdal/PipelineManager.hpp>
 
-class Reader {
-public:
-    virtual void Read() = 0;
-    virtual void Flush() = 0;
-    virtual pdal::PointViewSet* Get() = 0;
-    virtual ~Reader() {}
-};
+#include "Reader.h"
 
-class ReaderLas : public Reader {
+class ReaderLas : public Reader<pdal::PointViewSet> {
 private:
     pdal::Options options;
     pdal::StageFactory factory;
