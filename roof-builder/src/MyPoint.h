@@ -1,10 +1,6 @@
 #pragma once
 #include <cmath>
 
-struct Point {
-    float x, y, z;
-};
-
 class MyPoint {
 public:
     float x, y, z;
