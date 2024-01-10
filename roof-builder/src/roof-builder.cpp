@@ -62,14 +62,14 @@ int main() {
 			if (!points->empty()) {
 				for (auto &p : *points) {
 
-					auto point = geomFactory->createPoint(geos::geom::Coordinate(10.0, 10.0, 10.0));
-					std::cout << buildings.at(target_ind)->GetCodiceOggetto() << std::endl;
-					/*
-					if(target->GetPolygon()->contains(point.get()))
+					auto point = geomFactory->createPoint(geos::geom::Coordinate(p.x, p.y, 10.0));
+					if (buildings.at(target_ind)->GetPolygon()->contains(point.get())) {
 						targetPoints.push_back(p);
-						*/
+					}
+						
 				}
 			}
+			points->clear();
 
 			readerLas.Flush();
 

@@ -20,13 +20,13 @@ public:
 	float GetQuotaGronda() const { return m_QuotaGronda; }
 	float GetTolleranza() const { return m_Tolleranza; }
 	std::vector<geos::geom::Coordinate> GetGeoShapePoints() const { return m_GeoShapePoints; }
-	std::unique_ptr<geos::geom::Polygon> GetPolygon() { return std::move(m_Polygon); }
+	std::shared_ptr<geos::geom::Polygon> GetPolygon() { return m_Polygon; }
 
 private:
 	uint16_t m_CodiceOggetto;
 	float m_QuotaGronda;
 	std::vector<geos::geom::Coordinate> m_GeoShapePoints;
-	std::unique_ptr<geos::geom::Polygon> m_Polygon;
+	std::shared_ptr<geos::geom::Polygon> m_Polygon;
 	float m_Tolleranza;
 };
 
