@@ -14,6 +14,7 @@ public:
 
     void FillHoles(uint16_t tol);
     std::vector<std::vector<float>> GetSobelGradient();
+    MyPoint GetGridPointCoord(int grid_x, int grid_y);
 
     float GetMinX() const { return min_x; }
     float GetMaxX() const { return max_x; }

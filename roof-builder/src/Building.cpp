@@ -30,8 +30,7 @@ std::shared_ptr<Building> BuildingFactory::CreateBuilding(const std::string& ent
 
 		i++;
 	}
-
-	return std::make_shared<Building>(codiceOggetto, quotaGronda, points, tolleranza);
+	return std::make_shared<Building>(codiceOggetto, quotaGronda, points, tolleranza, std::move(polygon));
 }
 
 std::vector<geos::geom::Coordinate> BuildingFactory::getPoints(const std::string& entry) {

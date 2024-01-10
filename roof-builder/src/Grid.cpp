@@ -185,3 +185,23 @@ std::vector<std::vector<float>> Grid::GetSobelGradient() {
 
     return grad;
 }
+
+MyPoint Grid::GetGridPointCoord(int grid_x, int grid_y) {
+    float x = min_x + cell_size * grid_x;
+    float y = min_y + cell_size * grid_y;
+
+    float min_distance = 100.0f;
+    float closest_z = 0.0f;
+    for (const MyPoint& point : points) {
+        float distance = point.distance_xy(MyPoint(x, y, 0.0f));
+        if (distance < min_distance && point.z > 0.0f) {
+            min_distance = distance;
+            closest_z = point.z;
+            if (min_distance <= 0.02f) {
+                break;
+            }
+        }
+    }
+
+    return MyPoint(x, y, closest_z);
+}

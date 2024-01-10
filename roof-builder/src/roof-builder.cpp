@@ -1,8 +1,10 @@
 ﻿// roof-builder.cpp: definisce il punto di ingresso dell'applicazione.
 //
 
+#define NOMINMAX 1
+
 #include "roof-builder.h"
-#include <iostream>
+#include <iostream> 
 #include <sstream>
 #include <fstream>
 #include <vector>
@@ -11,11 +13,14 @@
 #include <chrono>
 #include "Readers/ReaderLas.h"
 #include "Grid.h"
-#include <geos_c.h>
 
 #include "Building.h"
 
+#include <opencv2/opencv.hpp>
+
 int main() {
+
+	auto start = std::chrono::high_resolution_clock::now();
 
 	std::ifstream file(ASSETS_PATH "compactBuildings.csv");
 	std::string line;
@@ -28,18 +33,24 @@ int main() {
 			continue;
 
 		lines.push_back(line);
-
-		break;
 	}
 
-	// MULTITHREADING
+	uint16_t select = 52578;
+	int target_ind;
+	std::vector<MyPoint> targetPoints;
+	int i = 0;
+
 	for (std::string line : lines) {
-		
-		std::shared_ptr<Building> building = BuildingFactory::createBuilding(line);
+		std::shared_ptr<Building> building = BuildingFactory::CreateBuilding(line);
+		if (building->GetCodiceOggetto() == select)
+			target_ind = i;
 		buildings.push_back(building);
+		i++;
 	}
 
-	/*
+
+	auto geomFactory = geos::geom::GeometryFactory::create();
+	
 	for (const auto& file : std::filesystem::directory_iterator(ASSETS_PATH "las/")) {
 		try {
 			ReaderLas readerLas(file.path().string());
@@ -50,7 +61,13 @@ int main() {
 			
 			if (!points->empty()) {
 				for (auto &p : *points) {
-					//std::cout << p.x << " " << p.y << " " << p.z << std::endl;
+
+					auto point = geomFactory->createPoint(geos::geom::Coordinate(10.0, 10.0, 10.0));
+					std::cout << buildings.at(target_ind)->GetCodiceOggetto() << std::endl;
+					/*
+					if(target->GetPolygon()->contains(point.get()))
+						targetPoints.push_back(p);
+						*/
 				}
 			}
 
@@ -67,6 +84,9 @@ int main() {
 			std::cerr << "An unknown error occurred." << std::endl;
 		}
 	}
+
+	std::cout << targetPoints.size() << std::endl;
+
 	auto end = std::chrono::high_resolution_clock::now();
 
 	std::chrono::duration<double> diff = end - start;
@@ -74,12 +94,40 @@ int main() {
     std::cout << "Tempo trascorso: " << diff.count() << " s\n";
 
 	
-	cv::Mat image = cv::imread(ASSETS_PATH "canny.png", cv::IMREAD_GRAYSCALE);
+	cv::Mat image = cv::imread(ASSETS_PATH "hg_52578.png", cv::IMREAD_GRAYSCALE);
 
-	cv::imshow("Immagine", image);
+	cv::Mat blur;
+	double sigma = 3.5;
+	cv::GaussianBlur(image, blur, cv::Size(0,0), sigma);
+
+	cv::Mat edges;
+	cv::Canny(blur, edges, 50, 80);
+
+	cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5,5));
+	cv::Mat edges_cl;
+	cv::morphologyEx(edges, edges_cl, cv::MORPH_CLOSE, kernel);
+
+	std::vector<cv::Point2f> corners;
+	cv::goodFeaturesToTrack(edges_cl, corners, 6, 0.1, 10.0, cv::Mat(), 9, false, 0.04);
+
+	cv::Mat blend = cv::Mat::zeros(edges_cl.size(), CV_MAKETYPE(CV_8U,3));
+
+	for (int i = 0; i < edges_cl.rows; i++) {
+        for (int j = 0; j < edges_cl.cols; j++) {
+            if (edges_cl.at<uchar>(i, j) > 0) {
+                blend.at<cv::Vec3b>(i, j) = cv::Vec3b(0, 0, 255); // BGR
+            }
+        }
+    }
+	for (size_t i = 0; i < corners.size(); i++) {
+        circle(blend, corners[i], 0.1, cv::Scalar(0, 255, 0), 2); // BGR
+    }
+
+	cv::Mat show;
+	cv::resize(blend, show, cv::Size(), 1.5, 1.5, cv::INTER_LINEAR);
+	cv::imshow("Result", show);
 
 	cv::waitKey(0);
-	*/
 
 	return 0;
 }

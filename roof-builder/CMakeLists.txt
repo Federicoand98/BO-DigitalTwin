@@ -29,24 +29,27 @@ FetchContent_Declare(
 	GIT_TAG        "main"
 	GIT_PROGRESS TRUE
 )
-
+FetchContent_GetProperties(geos)
+if (NOT geos_POPULATED)
+	FetchContent_Populate(geos)
+endif ()
 FetchContent_MakeAvailable(geos)
 
-#FetchContent_Declare(
-#	opencv2
-#	GIT_REPOSITORY "https://github.com/opencv/opencv.git"
-#	GIT_TAG        "4.x"
-#	GIT_PROGRESS TRUE
-#)
-#FetchContent_GetProperties(opencv2)
-#if (NOT opencv2_POPULATED)
-#	FetchContent_Populate(opencv2)
-#endif ()
-#FetchContent_MakeAvailable(opencv2)
+FetchContent_Declare(
+	opencv2
+	GIT_REPOSITORY "https://github.com/opencv/opencv.git"
+	GIT_TAG        "4.x"
+	GIT_PROGRESS TRUE
+)
+FetchContent_GetProperties(opencv2)
+if (NOT opencv2_POPULATED)
+	FetchContent_Populate(opencv2)
+endif ()
+FetchContent_MakeAvailable(opencv2)
 
-#set(OpenCV_DIR ${CMAKE_CURRENT_BINARY_DIR})
-#include_directories(${OpenCV_INCLUDE_DIRS})
-#find_package(OpenCV REQUIRED)
+set(OpenCV_DIR ${CMAKE_CURRENT_BINARY_DIR})
+include_directories(${OpenCV_INCLUDE_DIRS})
+find_package(OpenCV REQUIRED)
 
 find_package(PDAL 1.0.0 REQUIRED CONFIG)
 include_directories(${PDAL_INCLUDE_DIRS})
@@ -59,7 +62,7 @@ include_directories(${GEOS_INCLUDE_DIRS})
 
 add_executable (roof-builder ${SOURCES} "src/matplotlibcpp.h")
 
-target_link_libraries(${PROJECT_NAME} PRIVATE DataFrame geos ${PDAL_LIBRARIES}) #${OpenCV_LIBS})
+target_link_libraries(${PROJECT_NAME} PRIVATE DataFrame geos ${PDAL_LIBRARIES} ${OpenCV_LIBS})
 
 list(APPEND CMAKE_PREFIX_PATH ${geos_BINARY_DIR})
 
