@@ -13,9 +13,10 @@
 #include <chrono>
 #include "Readers/ReaderLas.h"
 #include "Grid.h"
-
 #include "Building.h"
+#include "Dbscan.h"
 
+#include "Printer.h"
 #include <opencv2/opencv.hpp>
 
 int main() {
@@ -35,7 +36,8 @@ int main() {
 		lines.push_back(line);
 	}
 
-	uint16_t select = 52578;
+	//uint16_t select = 52578;
+	uint16_t select = 24069;
 	int target_ind;
 	std::vector<MyPoint> targetPoints;
 	int i = 0;
@@ -47,7 +49,6 @@ int main() {
 		buildings.push_back(building);
 		i++;
 	}
-
 
 	auto geomFactory = geos::geom::GeometryFactory::create();
 	
@@ -85,14 +86,42 @@ int main() {
 		}
 	}
 
-	std::cout << targetPoints.size() << std::endl;
-
 	auto end = std::chrono::high_resolution_clock::now();
 
 	std::chrono::duration<double> diff = end - start;
 
-    std::cout << "Tempo trascorso: " << diff.count() << " s\n";
+    std::cout << "Tempo trascorso: " << diff.count() << std::endl;
 
+	std::vector<std::vector<size_t>> clusters = dbscan(std::span(targetPoints), 1.0, 10);
+
+	size_t largest_cluster_idx = 0;
+	size_t max_size = 0;
+
+	for (size_t i = 0; i < clusters.size(); ++i) {
+		if (clusters[i].size() > max_size) {
+			max_size = clusters[i].size();
+			largest_cluster_idx = i;
+		}
+	}
+
+	std::vector<MyPoint> largest_cluster;
+	for (auto idx : clusters[largest_cluster_idx]) {
+		largest_cluster.push_back(targetPoints[idx]);
+	}
+
+	Printer::printPoints(largest_cluster, 2.0, 15);
+
+	/*
+	std::vector<std::vector<MyPoint>> clusters = Dbscan::FindClusters(targetPoints, 1.0, 10);
+
+	Dbscan::MergeClusters(clusters, 0.5);
+	
+	Printer::printPoints(clusters[0], 2.0, 20);
+
+	*/
+
+
+	/*
 	
 	cv::Mat image = cv::imread(ASSETS_PATH "hg_52578.png", cv::IMREAD_GRAYSCALE);
 
@@ -128,6 +157,7 @@ int main() {
 	cv::imshow("Result", show);
 
 	cv::waitKey(0);
+	*/
 
 	return 0;
 }

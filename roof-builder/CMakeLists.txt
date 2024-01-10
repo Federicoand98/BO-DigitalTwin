@@ -60,7 +60,7 @@ set(GEOS_INCLUDE_DIRS ${geos_SOURCE_DIR}/include)
 set(GEOS_LIBRARIES ${geos_BINARY_DIR}/lib)
 include_directories(${GEOS_INCLUDE_DIRS})
 
-add_executable (roof-builder ${SOURCES} "src/matplotlibcpp.h")
+add_executable (roof-builder ${SOURCES} "src/matplotlibcpp.h" "src/Printer.h" "src/Dbscan.h")
 
 target_link_libraries(${PROJECT_NAME} PRIVATE DataFrame geos ${PDAL_LIBRARIES} ${OpenCV_LIBS})
 
