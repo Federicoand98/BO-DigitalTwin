@@ -27,5 +27,7 @@ public:
 
         cv::imshow("Image", image);
         cv::waitKey(0);
+        cv::destroyAllWindows();
+        cv::waitKey(1);
     }
 };

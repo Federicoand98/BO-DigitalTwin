@@ -15,12 +15,12 @@
 #include "Grid.h"
 #include "Building.h"
 #include "Dbscan.h"
+#include "UtilsCV.h"
 
 #include "Printer.h"
 #include <opencv2/opencv.hpp>
 
 int main() {
-
 	auto start = std::chrono::high_resolution_clock::now();
 
 	std::ifstream file(ASSETS_PATH "compactBuildings.csv");
@@ -36,8 +36,8 @@ int main() {
 		lines.push_back(line);
 	}
 
-	//uint16_t select = 52578;
-	uint16_t select = 24069;
+	uint16_t select = 52578;
+	//uint16_t select = 24069;
 	int target_ind;
 	std::vector<MyPoint> targetPoints;
 	int i = 0;
@@ -62,12 +62,10 @@ int main() {
 			
 			if (!points->empty()) {
 				for (auto &p : *points) {
-
 					auto point = geomFactory->createPoint(geos::geom::Coordinate(p.x, p.y, 10.0));
 					if (buildings.at(target_ind)->GetPolygon()->contains(point.get())) {
 						targetPoints.push_back(p);
 					}
-						
 				}
 			}
 			points->clear();
@@ -94,18 +92,18 @@ int main() {
 
 	std::vector<MyPoint> mainCluster = Dbscan::GetMainCluster(std::span(targetPoints), 1.0, 10);
 
-	Printer::printPoints(mainCluster, 2.0, 15);
+	//Printer::printPoints(mainCluster, 2.0, 15);
 
-	/*
-	std::vector<std::vector<MyPoint>> clusters = Dbscan::FindClusters(targetPoints, 1.0, 10);
+	auto grid_s = std::chrono::high_resolution_clock::now();
 
-	Dbscan::MergeClusters(clusters, 0.5);
+	Grid grid;
+	grid.Init(mainCluster, 0.1, 2.0, 0.2);
+
+	auto grid_e = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double> diff_g = grid_e - grid_s;
+
+	std::cout << "Tempo grid: " << diff_g.count() << std::endl;
 	
-	Printer::printPoints(clusters[0], 2.0, 20);
-
-	*/
-
-
 	/*
 	
 	cv::Mat image = cv::imread(ASSETS_PATH "hg_52578.png", cv::IMREAD_GRAYSCALE);

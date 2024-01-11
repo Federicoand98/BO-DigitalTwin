@@ -1,5 +1,6 @@
 #include "Grid.h"
 
+/*
 void Grid::Init(const std::vector<MyPoint>& i_points, float cell_size, float tol, float radius) {
     Clear();
 
@@ -10,6 +11,7 @@ void Grid::Init(const std::vector<MyPoint>& i_points, float cell_size, float tol
 
     int num_cells_x = std::ceil((max_x - min_x) / cell_size);
     int num_cells_y = std::ceil((max_y - min_y) / cell_size);
+
 
     points.reserve(num_cells_x * num_cells_y);
     height_mat.resize(num_cells_x, std::vector<float>(num_cells_y, 0.0f));
@@ -70,6 +72,84 @@ void Grid::Init(const std::vector<MyPoint>& i_points, float cell_size, float tol
     }
 #endif
 }
+*/
+
+namespace nf = nanoflann;
+
+void Grid::Init(const std::vector<MyPoint>& i_points, float cell_size, float tol, float radius) {
+    Clear();
+
+    min_x = std::min_element(i_points.begin(), i_points.end(), [](MyPoint const a, MyPoint const b) { return a.x < b.x; })->x - tol;
+    max_x = std::max_element(i_points.begin(), i_points.end(), [](MyPoint const a, MyPoint const b) { return a.x < b.x; })->x + tol;
+    min_y = std::min_element(i_points.begin(), i_points.end(), [](MyPoint const a, MyPoint const b) { return a.y < b.y; })->y - tol;
+    max_y = std::max_element(i_points.begin(), i_points.end(), [](MyPoint const a, MyPoint const b) { return a.y < b.y; })->y + tol;
+
+    int num_cells_x = std::ceil((max_x - min_x) / cell_size);
+    int num_cells_y = std::ceil((max_y - min_y) / cell_size);
+
+    points.reserve(num_cells_x * num_cells_y);
+    height_mat.resize(num_cells_x, std::vector<float>(num_cells_y, 0.0f));
+
+    PointCloud cloud;
+    for (const auto& point : i_points) {
+        cloud.pts.push_back({ point.x, point.y, point.z });
+    }
+
+    nf::KDTreeSingleIndexAdaptor<nf::L2_Simple_Adaptor<float, PointCloud>, PointCloud, 2> kdtree
+    (2, cloud, nf::KDTreeSingleIndexAdaptorParams(10 /* max leaf */));
+    kdtree.buildIndex();
+
+
+#if MULTITHREADING
+#pragma omp parallel for 
+    for (int i = 0; i < num_cells_x; ++i) {
+        for (int j = 0; j < num_cells_y; ++j) {
+            float x = min_x + i * cell_size;
+            float y = min_y + j * cell_size;
+            float z = 0.0f;
+
+            const size_t num_results = 1;
+            size_t ret_index;
+            float out_dist_sqr;
+            nanoflann::KNNResultSet<float> resultSet(num_results);
+            resultSet.init(&ret_index, &out_dist_sqr);
+            float query_pt[2] = { x, y };
+            kdtree.findNeighbors(resultSet, &query_pt[0], nanoflann::SearchParams(10));
+
+            z = i_points[ret_index].z;
+
+#pragma omp critical 
+            {
+                points.emplace_back(x, y, z);
+                height_mat[i][j] = z;
+            }
+        }
+    }
+#else
+    for (int i = 0; i < num_cells_x; ++i) {
+        for (int j = 0; j < num_cells_y; ++j) {
+            float x = min_x + i * cell_size;
+            float y = min_y + j * cell_size;
+            float z = 0.0f;
+
+            const size_t num_results = 1;
+            size_t ret_index;
+            float out_dist_sqr;
+            nanoflann::KNNResultSet<float> resultSet(num_results);
+            resultSet.init(&ret_index, &out_dist_sqr);
+            float query_pt[2] = { x, y };
+            kdtree.findNeighbors(resultSet, &query_pt[0], nanoflann::SearchParams(10));
+
+            z = i_points[ret_index].z;
+
+            points.emplace_back(x, y, z);
+            height_mat[i][j] = z;
+        }
+    }
+#endif
+}
+
+
 
 void Grid::Clear() {
     min_x, max_x, min_y, max_y, cell_size = 0;
@@ -185,6 +265,8 @@ std::vector<std::vector<float>> Grid::GetSobelGradient() {
 
     return grad;
 }
+
+
 
 MyPoint Grid::GetGridPointCoord(int grid_x, int grid_y) {
     float x = min_x + cell_size * grid_x;
