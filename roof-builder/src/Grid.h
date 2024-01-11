@@ -1,14 +1,16 @@
 #pragma once
 
+#include <iostream> 
 #include <vector>
 #include <algorithm>
 #include <cmath>
 #include <omp.h>
 #include "MyPoint.h"
+#include "nanoflann/nanoflann.hpp"
 
 class Grid {
 public:
-    Grid();
+    Grid() {};
     void Init(const std::vector<MyPoint>& i_points, float cell_size, float tol, float radius);
     void Clear();
 
