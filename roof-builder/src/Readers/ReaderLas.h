@@ -13,6 +13,7 @@ class ReaderLas : public Reader<std::vector<MyPoint>> {
 public:
     ReaderLas(const std::string& filename);
     void Read() override;
+    void Read(const std::string& filePath) override;
     std::vector<MyPoint>* Get() override;
     void Flush() override;
     ~ReaderLas();

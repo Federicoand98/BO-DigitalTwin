@@ -7,6 +7,9 @@ ReaderLas::ReaderLas(const std::string& filename) {
     reader->setOptions(options);
 }
 
+void ReaderLas::Read(const std::string& filePath) {
+}
+
 void ReaderLas::Read() {
     reader->prepare(table);
     pointViewSet = reader->execute(table);
