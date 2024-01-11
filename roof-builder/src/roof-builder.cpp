@@ -16,6 +16,7 @@
 #include "Building.h"
 #include "Dbscan.h"
 #include "UtilsCV.h"
+#include "Readers/ReaderCsv.h"
 
 #include "Printer.h"
 #include <opencv2/opencv.hpp>
@@ -23,19 +24,12 @@
 int main() {
 	auto start = std::chrono::high_resolution_clock::now();
 
-	std::ifstream file(ASSETS_PATH "compactBuildings.csv");
-	std::string line;
-	std::vector<std::string> lines;
+	ReaderCsv readerCsv;
+	readerCsv.Read(ASSETS_PATH "compactBuildings.csv");
+
+	std::vector<std::string> lines = readerCsv.Ottieni();
 
 	std::vector<std::shared_ptr<Building>> buildings;
-
-	while (std::getline(file, line)) {
-		if (line.find("CODICE_OGGETTO") != std::string::npos)
-			continue;
-
-		lines.push_back(line);
-	}
-
 	uint16_t select = 52578;
 	//uint16_t select = 24069;
 	int target_ind;
@@ -49,6 +43,8 @@ int main() {
 		buildings.push_back(building);
 		i++;
 	}
+
+	readerCsv.Flush();
 
 	auto geomFactory = geos::geom::GeometryFactory::create();
 	
@@ -90,7 +86,7 @@ int main() {
 
     std::cout << "Tempo trascorso: " << diff.count() << std::endl;
 
-	std::vector<MyPoint> mainCluster = Dbscan::GetMainCluster(std::span(targetPoints), 1.0, 10);
+	std::vector<MyPoint> mainCluster = Dbscan::GetMainCluster(std::span(targetPoints), 0.8, 10);
 
 	//Printer::printPoints(mainCluster, 2.0, 15);
 
@@ -98,15 +94,18 @@ int main() {
 
 	Grid grid;
 	grid.Init(mainCluster, 0.1, 2.0, 0.2);
+	grid.FillHoles(5);
 
 	auto grid_e = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double> diff_g = grid_e - grid_s;
 
 	std::cout << "Tempo grid: " << diff_g.count() << std::endl;
-	
-	/*
-	
-	cv::Mat image = cv::imread(ASSETS_PATH "hg_52578.png", cv::IMREAD_GRAYSCALE);
+
+	std::vector<std::vector<float>> height_mat = grid.GetHeightMat();
+	std::vector<MyPoint> gridPoints = grid.GetPoints();
+
+	cv::Mat image = UtilsCV::GetImage(height_mat, ColoringMethod::HEIGHT_TO_GRAYSCALE);
+
 
 	cv::Mat blur;
 	double sigma = 3.5;
@@ -140,7 +139,6 @@ int main() {
 	cv::imshow("Result", show);
 
 	cv::waitKey(0);
-	*/
 
 	return 0;
 }

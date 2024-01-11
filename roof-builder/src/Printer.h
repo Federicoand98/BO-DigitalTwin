@@ -7,7 +7,7 @@
 
 class Printer {
 public:
-    static void printPoints(const std::vector<MyPoint>& targetPoints, float tol, int scale) {
+    static void printPoints(const std::vector<MyPoint>& targetPoints, float tol, int scale, bool filterZeros) {
         float min_x = std::min_element(targetPoints.begin(), targetPoints.end(), [](MyPoint const a, MyPoint const b) { return a.x < b.x; })->x - tol;
         float max_x = std::max_element(targetPoints.begin(), targetPoints.end(), [](MyPoint const a, MyPoint const b) { return a.x < b.x; })->x + tol;
         float min_y = std::min_element(targetPoints.begin(), targetPoints.end(), [](MyPoint const a, MyPoint const b) { return a.y < b.y; })->y - tol;
@@ -22,7 +22,8 @@ public:
             int x = ((point.x - min_x) / (max_x - min_x)) * w;
             int y = h - ((point.y - min_y) / (max_y - min_y)) * h;
 
-            cv::circle(image, cv::Point(x, y), 0.1, cv::Scalar(0, 255, 0), -1);
+            if (filterZeros && point.z > 10.0)
+                cv::circle(image, cv::Point(x, y), 0.1, cv::Scalar(0, 255, 0), -1);
         }
 
         cv::imshow("Image", image);

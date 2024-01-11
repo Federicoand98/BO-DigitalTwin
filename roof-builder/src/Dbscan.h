@@ -19,7 +19,7 @@ auto dbscan(const std::span<const MyPoint>& data, float eps, int min_pts) -> std
 class Dbscan {
 public:
 	static std::vector<MyPoint> GetMainCluster(const std::span<const MyPoint>& points, float eps, int minPts) {
-		std::vector<std::vector<size_t>> clusters = dbscan(points, 1.0, 10);
+		std::vector<std::vector<size_t>> clusters = dbscan(points, eps, minPts);
 
 		size_t largest_cluster_idx = 0;
 		size_t max_size = 0;

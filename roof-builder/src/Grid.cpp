@@ -116,7 +116,12 @@ void Grid::Init(const std::vector<MyPoint>& i_points, float cell_size, float tol
             float query_pt[2] = { x, y };
             kdtree.findNeighbors(resultSet, &query_pt[0], nanoflann::SearchParams(10));
 
-            z = i_points[ret_index].z;
+            if (sqrt(out_dist_sqr) > radius) {
+                z = 0.0f;
+            }
+            else {
+                z = cloud.pts[ret_index].z;
+            }
 
 #pragma omp critical 
             {
@@ -140,7 +145,12 @@ void Grid::Init(const std::vector<MyPoint>& i_points, float cell_size, float tol
             float query_pt[2] = { x, y };
             kdtree.findNeighbors(resultSet, &query_pt[0], nanoflann::SearchParams(10));
 
-            z = i_points[ret_index].z;
+            if (sqrt(out_dist_sqr) > radius) {
+                z = 0.0f;
+            }
+            else {
+                z = cloud.pts[ret_index].z;
+            }
 
             points.emplace_back(x, y, z);
             height_mat[i][j] = z;
