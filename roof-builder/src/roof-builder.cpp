@@ -30,21 +30,25 @@ int main() {
 	std::vector<std::string> lines = readerCsv.Ottieni();
 
 	std::vector<std::shared_ptr<Building>> buildings;
-	uint16_t select = 52578;
-	//uint16_t select = 24069;
-	int target_ind;
+	//uint16_t select = 52578;
+	uint16_t select = 24069;
+	int targetInd;
 	std::vector<MyPoint> targetPoints;
 	int i = 0;
 
 	for (std::string line : lines) {
 		std::shared_ptr<Building> building = BuildingFactory::CreateBuilding(line);
 		if (building->GetCodiceOggetto() == select)
-			target_ind = i;
+			targetInd = i;
 		buildings.push_back(building);
 		i++;
 	}
 
 	readerCsv.Flush();
+
+	int targetCornerNumb = buildings.at(targetInd)->GetPolygon()->getNumPoints() - 1;
+
+	std::cout << "Corners number: " << targetCornerNumb << std::endl;
 
 	auto geomFactory = geos::geom::GeometryFactory::create();
 	
@@ -58,8 +62,8 @@ int main() {
 			
 			if (!points->empty()) {
 				for (auto &p : *points) {
-					auto point = geomFactory->createPoint(geos::geom::Coordinate(p.x, p.y, 10.0));
-					if (buildings.at(target_ind)->GetPolygon()->contains(point.get())) {
+					auto point = geomFactory->createPoint(geos::geom::Coordinate(p.x, p.y, p.z));
+					if (buildings.at(targetInd)->GetPolygon()->contains(point.get())) {
 						targetPoints.push_back(p);
 					}
 				}
@@ -68,7 +72,7 @@ int main() {
 
 			readerLas.Flush();
 
-			std::cout << "\nDone." << std::endl;
+			
 			
 		} catch (const pdal::pdal_error &e) {
 			std::cerr << "PDAL read error: " << e.what() << std::endl;
@@ -88,8 +92,6 @@ int main() {
 
 	std::vector<MyPoint> mainCluster = Dbscan::GetMainCluster(std::span(targetPoints), 0.8, 10);
 
-	//Printer::printPoints(mainCluster, 2.0, 15);
-
 	auto grid_s = std::chrono::high_resolution_clock::now();
 
 	Grid grid;
@@ -106,6 +108,7 @@ int main() {
 
 	cv::Mat image = UtilsCV::GetImage(height_mat, ColoringMethod::HEIGHT_TO_GRAYSCALE);
 
+	UtilsCV::Show(image, 1.2);
 
 	cv::Mat blur;
 	double sigma = 3.5;
@@ -119,7 +122,7 @@ int main() {
 	cv::morphologyEx(edges, edges_cl, cv::MORPH_CLOSE, kernel);
 
 	std::vector<cv::Point2f> corners;
-	cv::goodFeaturesToTrack(edges_cl, corners, 6, 0.1, 10.0, cv::Mat(), 9, false, 0.04);
+	cv::goodFeaturesToTrack(edges_cl, corners, targetCornerNumb, 0.1, 10.0, cv::Mat(), 9, false, 0.04);
 
 	cv::Mat blend = cv::Mat::zeros(edges_cl.size(), CV_MAKETYPE(CV_8U,3));
 
@@ -134,11 +137,8 @@ int main() {
         circle(blend, corners[i], 0.1, cv::Scalar(0, 255, 0), 2); // BGR
     }
 
-	cv::Mat show;
-	cv::resize(blend, show, cv::Size(), 1.5, 1.5, cv::INTER_LINEAR);
-	cv::imshow("Result", show);
 
-	cv::waitKey(0);
+	UtilsCV::Show(blend, 1.2);
 
 	return 0;
 }
