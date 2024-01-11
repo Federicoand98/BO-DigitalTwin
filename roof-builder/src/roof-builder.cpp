@@ -92,24 +92,9 @@ int main() {
 
     std::cout << "Tempo trascorso: " << diff.count() << std::endl;
 
-	std::vector<std::vector<size_t>> clusters = dbscan(std::span(targetPoints), 1.0, 10);
+	std::vector<MyPoint> mainCluster = Dbscan::GetMainCluster(std::span(targetPoints), 1.0, 10);
 
-	size_t largest_cluster_idx = 0;
-	size_t max_size = 0;
-
-	for (size_t i = 0; i < clusters.size(); ++i) {
-		if (clusters[i].size() > max_size) {
-			max_size = clusters[i].size();
-			largest_cluster_idx = i;
-		}
-	}
-
-	std::vector<MyPoint> largest_cluster;
-	for (auto idx : clusters[largest_cluster_idx]) {
-		largest_cluster.push_back(targetPoints[idx]);
-	}
-
-	Printer::printPoints(largest_cluster, 2.0, 15);
+	Printer::printPoints(mainCluster, 2.0, 15);
 
 	/*
 	std::vector<std::vector<MyPoint>> clusters = Dbscan::FindClusters(targetPoints, 1.0, 10);
