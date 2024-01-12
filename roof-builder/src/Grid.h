@@ -14,21 +14,21 @@ public:
     void Init(const std::vector<MyPoint>& i_points, float cell_size, float tol, float radius);
     void Clear();
 
-    void FillHoles(uint16_t tol);
+    void FillHoles(uint16_t tol, int numIterations = 1);
     std::vector<std::vector<float>> GetSobelGradient();
     MyPoint GetGridPointCoord(int grid_x, int grid_y);
 
-    float GetMinX() const { return min_x; }
-    float GetMaxX() const { return max_x; }
-    float GetMinY() const { return min_y; }
-    float GetMaxY() const { return max_y; }
-    float GetCellSize() const { return cell_size; }
+    float GetMinX() const { return minX; }
+    float GetMaxX() const { return maxX; }
+    float GetMinY() const { return minY; }
+    float GetMaxY() const { return maxY; }
+    float GetCellSize() const { return cellSize; }
     const std::vector<MyPoint>& GetPoints() const { return points; }
-    const std::vector<std::vector<float>>& GetHeightMat() const { return height_mat; }
+    const std::vector<std::vector<float>>& GetHeightMat() const { return heightMat; }
 
 private:
-    float min_x, max_x, min_y, max_y;
-    float cell_size;
+    float minX, maxX, minY, maxY;
+    float cellSize;
     std::vector<MyPoint> points;
-    std::vector<std::vector<float>> height_mat;
+    std::vector<std::vector<float>> heightMat;
 };

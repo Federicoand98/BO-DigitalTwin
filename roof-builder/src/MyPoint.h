@@ -1,6 +1,8 @@
 #pragma once
 #include <cmath>
 #include <vector>
+#include <iostream>
+#include <iomanip>
 
 class MyPoint {
 public:
@@ -14,6 +16,12 @@ public:
 
     float distance(const MyPoint& other) const {
         return std::sqrt(std::pow(other.x - x, 2) + std::pow(other.y - y, 2) + std::pow(other.z - z, 2));
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const MyPoint& point) {
+        os << std::fixed << std::setprecision(3);
+        os << "MyPoint(" << point.x << ", " << point.y << ", " << point.z << ")";
+        return os;
     }
 };
 
