@@ -68,8 +68,8 @@ int main() {
 	std::vector<std::string> lines = readerCsv.Ottieni();
 
 	std::vector<std::shared_ptr<Building>> buildings;
-	uint16_t select = 52578;
-	//uint16_t select = 24069;
+	//uint16_t select = 52578;
+	uint16_t select = 24069;
 	int targetInd;
 	std::vector<MyPoint> targetPoints;
 	int i = 0;
@@ -196,9 +196,9 @@ int main() {
 
 	//UtilsCV::Show(edges, 1.2);
 	
-	cv::Mat kernel = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5));
+	cv::Mat k5 = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5));
 	cv::Mat edges_cl;
-	cv::morphologyEx(edges, edges_cl, cv::MORPH_CLOSE, kernel, cv::Point(-1,-1), 2);
+	cv::morphologyEx(edges, edges_cl, cv::MORPH_CLOSE, k5, cv::Point(-1,-1), 2);
 
 	cv::Mat cornersTarget = edges_cl;
 	std::vector<cv::Point2f> corners;
@@ -227,7 +227,51 @@ int main() {
 	//UtilsCV::Show(blend, 1.2);
 	std::vector<std::vector<float>> lm = compute_local_max(height_mat, 11);
 	
-	UtilsCV::Show(lm, ColoringMethod::HEIGHT_TO_GRAYSCALE, 1.2);
+	int count = 0;
+
+	for (int i = 0; i < lm.size(); ++i) {
+		for (int j = 0; j < lm[i].size(); ++j) {
+			if (lm[i][j] == 254.0) {
+				count++;
+			}
+		}
+	}
+
+	std::cout << "Max points: " << count << std::endl;
+
+	cv::Mat lmIm = UtilsCV::GetImage(lm, ColoringMethod::HEIGHT_TO_GRAYSCALE);
+	UtilsCV::Show(lmIm, 1.2);
+
+	cv::Mat ke = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(1, 2));
+	cv::morphologyEx(lmIm, lmIm, cv::MORPH_ERODE, ke, cv::Point(-1, -1), 1);
+	UtilsCV::Show(lmIm, 1.2);
+
+	std::vector<cv::Point2f> topPoints;
+	int maxTop = floor(targetCornerNumb * 0.9);
+	cv::goodFeaturesToTrack(lmIm, topPoints, maxTop, 0.1, 3.0, cv::Mat(), 50, false, 0.04);
+
+	cv::Mat lmBlend = cv::Mat::zeros(lmIm.size(), CV_MAKETYPE(CV_8U, 3));
+
+	for (int i = 0; i < lmIm.rows; i++) {
+		for (int j = 0; j < lmIm.cols; j++) {
+			if (lmIm.at<uchar>(i, j) > 0) {
+				lmBlend.at<cv::Vec3b>(i, j) = cv::Vec3b(0, 0, 255); // BGR
+			}
+		}
+	}
+	for (size_t i = 0; i < topPoints.size(); i++) {
+		circle(lmBlend, topPoints[i], 0.1, cv::Scalar(0, 255, 0), 2); // BGR
+	}
+
+	/*
+	std::cout << "Points: " << std::endl;
+	for (size_t i = 0; i < corners.size(); i++) {
+		MyPoint p = grid.GetGridPointCoord(corners[i].x, corners[i].y);
+		std::cout << p << std::endl;
+	}
+	*/
+
+	UtilsCV::Show(lmBlend, 1.2);
 
 	return 0;
 }
