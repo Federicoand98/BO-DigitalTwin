@@ -2,6 +2,7 @@
 //
 
 #define NOMINMAX 1
+#define VIEW_SCALE 1.5
 
 #include "roof-builder.h"
 #include <iostream> 
@@ -22,7 +23,7 @@
 #include <opencv2/opencv.hpp>
 
 
-std::vector<std::vector<float>> compute_local_max(const std::vector<std::vector<float>>& v, int kernel_size) {
+std::vector<std::vector<float>> localMax(const std::vector<std::vector<float>>& v, int kernel_size) {
 	int k = kernel_size / 2;
 	std::vector<std::vector<float>> max(v.size(), std::vector<float>(v[0].size(), 0.0));
 	std::vector<std::vector<float>> max_check(v.size(), std::vector<float>(v[0].size(), 0.0));
@@ -48,7 +49,7 @@ std::vector<std::vector<float>> compute_local_max(const std::vector<std::vector<
 	for (int i = 0; i < v.size(); ++i) {
 		for (int j = 0; j < v[i].size(); ++j) {
 			if (max[i][j] == v[i][j] && v[i][j] != 0.0) {
-				max_check[i][j] = 254.0;
+				max_check[i][j] = 255.0;
 			}
 			else {
 				max_check[i][j] = 1.0;
@@ -57,6 +58,31 @@ std::vector<std::vector<float>> compute_local_max(const std::vector<std::vector<
 	}
 
 	return max_check;
+}
+
+std::vector<std::vector<float>> medianFilter(const std::vector<std::vector<float>>& matrix, int n) {
+	int rows = matrix.size();
+	int cols = matrix[0].size();
+	std::vector<std::vector<float>> result(rows, std::vector<float>(cols));
+
+	for (int i = 0; i < rows; i++) {
+		for (int j = 0; j < cols; j++) {
+			std::vector<float> window;
+
+			for (int x = i - n / 2; x <= i + n / 2; x++) {
+				for (int y = j - n / 2; y <= j + n / 2; y++) {
+					if (x >= 0 && y >= 0 && x < rows && y < cols) {
+						window.push_back(matrix[x][y]);
+					}
+				}
+			}
+
+			std::sort(window.begin(), window.end());
+			result[i][j] = window[window.size() / 2];
+		}
+	}
+
+	return result;
 }
 
 int main() {
@@ -68,8 +94,8 @@ int main() {
 	std::vector<std::string> lines = readerCsv.Ottieni();
 
 	std::vector<std::shared_ptr<Building>> buildings;
-	//uint16_t select = 52578;
-	uint16_t select = 24069;
+	uint16_t select = 52578;
+	//uint16_t select = 24069;
 	int targetInd;
 	std::vector<MyPoint> targetPoints;
 	int i = 0;
@@ -87,7 +113,6 @@ int main() {
 
 	int targetCornerNumb = targetBuild->GetPolygon()->getNumPoints() - 1;
 	std::cout << "Corners number: " << targetCornerNumb << std::endl;
-
 
 	auto geomFactory = geos::geom::GeometryFactory::create();
 	
@@ -110,8 +135,6 @@ int main() {
 			points->clear();
 
 			readerLas.Flush();
-
-			
 			
 		} catch (const pdal::pdal_error &e) {
 			std::cerr << "PDAL read error: " << e.what() << std::endl;
@@ -166,35 +189,23 @@ int main() {
 		}
 	}
 
-	/*
-	std::vector<std::vector<float>> f2 = height_mat;
-
-	for (int i = 0; i < f2.size(); i++) {
-		for (int j = 0; j < f2[0].size(); j++) {
-			if (f2[i][j] > minZ) {
-				f2[i][j] = minZ;
-			}
-		}
-	}
-	*/
-
-	//UtilsCV::Show(f1, ColoringMethod::HEIGHT_TO_GRAYSCALE, 1.2);
+	//UtilsCV::Show(f1, ColoringMethod::HEIGHT_TO_GRAYSCALE, VIEW_SCALE);
 
 
 	cv::Mat image = UtilsCV::GetImage(f1, ColoringMethod::HEIGHT_TO_GRAYSCALE);
 
-	//UtilsCV::Show(image, 1.2);
+	//UtilsCV::Show(image, VIEW_SCALE);
 
 	cv::Mat blur;
 	double sigma = 3.2;
 	cv::GaussianBlur(image, blur, cv::Size(0,0), sigma);
 
-	//UtilsCV::Show(blur, 1.2);
+	//UtilsCV::Show(blur, VIEW_SCALE);
 
 	cv::Mat edges;
 	cv::Canny(blur, edges, 50, 150);
 
-	//UtilsCV::Show(edges, 1.2);
+	//UtilsCV::Show(edges, VIEW_SCALE);
 	
 	cv::Mat k5 = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5));
 	cv::Mat edges_cl;
@@ -218,63 +229,75 @@ int main() {
         circle(blend, corners[i], 0.1, cv::Scalar(0, 255, 0), 2); // BGR
     }
 
-	std::cout << "Points: " << std::endl;
-	for (size_t i = 0; i < corners.size(); i++) {
-		MyPoint p = grid.GetGridPointCoord(corners[i].x, corners[i].y);
-		std::cout << p << std::endl;
+	//UtilsCV::Show(blend, VIEW_SCALE);
+
+	std::vector<std::vector<float>> lm = localMax(height_mat, 11);
+
+	cv::Mat lmIm = UtilsCV::GetImage(lm, ColoringMethod::HEIGHT_TO_GRAYSCALE);
+	UtilsCV::Show(lmIm, VIEW_SCALE);
+
+	cv::Mat k3 = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
+	cv::dilate(lmIm, lmIm, k3);
+	std::vector<std::vector<cv::Point>> contours;
+	cv::findContours(lmIm, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+	cv::Mat centers = cv::Mat::zeros(lmIm.size(), CV_8UC1);
+
+	int e = 0;
+	for (const auto& contour : contours) {
+		cv::Moments m = cv::moments(contour);
+		if (m.m00 != 0) {
+			int cx = int(m.m10 / m.m00);
+			int cy = int(m.m01 / m.m00);
+
+			centers.at<uchar>(cy, cx) = 255;
+		}
 	}
 
-	//UtilsCV::Show(blend, 1.2);
-	std::vector<std::vector<float>> lm = compute_local_max(height_mat, 11);
-	
-	int count = 0;
-
-	for (int i = 0; i < lm.size(); ++i) {
-		for (int j = 0; j < lm[i].size(); ++j) {
-			if (lm[i][j] == 254.0) {
-				count++;
+	std::vector<cv::Point2f> cornersTop;
+	for (int i = 0; i < centers.rows; ++i) {
+		for (int j = 0; j < centers.cols; ++j) {
+			if (centers.at<uchar>(i, j) == 255.0) {
+				cornersTop.push_back(cv::Point2f(j, i));
 			}
 		}
 	}
 
-	std::cout << "Max points: " << count << std::endl;
-
-	cv::Mat lmIm = UtilsCV::GetImage(lm, ColoringMethod::HEIGHT_TO_GRAYSCALE);
-	UtilsCV::Show(lmIm, 1.2);
-
-	cv::Mat ke = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(1, 2));
-	cv::morphologyEx(lmIm, lmIm, cv::MORPH_ERODE, ke, cv::Point(-1, -1), 1);
-	UtilsCV::Show(lmIm, 1.2);
-
-	std::vector<cv::Point2f> topPoints;
-	int maxTop = floor(targetCornerNumb * 0.9);
-	cv::goodFeaturesToTrack(lmIm, topPoints, maxTop, 0.1, 3.0, cv::Mat(), 50, false, 0.04);
+	UtilsCV::Show(centers, VIEW_SCALE);
 
 	cv::Mat lmBlend = cv::Mat::zeros(lmIm.size(), CV_MAKETYPE(CV_8U, 3));
 
-	for (int i = 0; i < lmIm.rows; i++) {
-		for (int j = 0; j < lmIm.cols; j++) {
-			if (lmIm.at<uchar>(i, j) > 0) {
+	for (int i = 0; i < cornersTarget.rows; i++) {
+		for (int j = 0; j < cornersTarget.cols; j++) {
+			if (cornersTarget.at<uchar>(i, j) > 0) {
 				lmBlend.at<cv::Vec3b>(i, j) = cv::Vec3b(0, 0, 255); // BGR
 			}
 		}
 	}
-	for (size_t i = 0; i < topPoints.size(); i++) {
-		circle(lmBlend, topPoints[i], 0.1, cv::Scalar(0, 255, 0), 2); // BGR
+	for (size_t i = 0; i < corners.size(); i++) {
+		circle(lmBlend, corners[i], 0.1, cv::Scalar(0, 255, 0), 2); // BGR
+	}
+	for (size_t i = 0; i < cornersTop.size(); i++) {
+		circle(lmBlend, cornersTop[i], 0.1, cv::Scalar(255, 0, 0), 2); // BGR
 	}
 
 	/*
-	std::cout << "Points: " << std::endl;
+	std::cout << "Points Bottom: " << std::endl;
 	for (size_t i = 0; i < corners.size(); i++) {
 		MyPoint p = grid.GetGridPointCoord(corners[i].x, corners[i].y);
 		std::cout << p << std::endl;
 	}
+	std::cout << "Points Top: " << std::endl;
+	for (size_t i = 0; i < cornersTop.size(); i++) {
+		MyPoint p = grid.GetGridPointCoord(cornersTop[i].x, cornersTop[i].y);
+		std::cout << p << std::endl;
+	}
 	*/
 
-	UtilsCV::Show(lmBlend, 1.2);
+	UtilsCV::Show(lmBlend, VIEW_SCALE);
 
+
+
+	
 	return 0;
 }
-
-
-
