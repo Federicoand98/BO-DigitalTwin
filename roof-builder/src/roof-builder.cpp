@@ -35,8 +35,8 @@ int main() {
 	std::vector<std::string> lines = readerCsv.Ottieni();
 
 	std::vector<std::shared_ptr<Building>> buildings;
-	uint16_t select = 52578;
-	//uint16_t select = 24069;
+	//uint16_t select = 52578;
+	uint16_t select = 24069;
 	int targetInd;
 	std::vector<MyPoint> targetPoints;
 	int i = 0;
@@ -154,7 +154,7 @@ int main() {
 
 	cv::Mat cornersTarget = edges_cl;
 	std::vector<cv::Point2f> corners;
-	int maxCorners = floor(targetCornerNumb * 1.1);
+	int maxCorners = floor(targetCornerNumb * 3.0);
 	cv::goodFeaturesToTrack(cornersTarget, corners, maxCorners, 0.1, 10.0, cv::Mat(), 9, false, 0.04);
 
 	cv::Mat blend = cv::Mat::zeros(cornersTarget.size(), CV_MAKETYPE(CV_8U,3));
