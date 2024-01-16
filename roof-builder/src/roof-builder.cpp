@@ -12,6 +12,7 @@
 #include <string>
 #include <filesystem>
 #include <chrono>
+#include <locale>
 #include "Readers/ReaderLas.h"
 #include "Grid.h"
 #include "Building.h"
@@ -86,6 +87,8 @@ std::vector<std::vector<float>> medianFilter(const std::vector<std::vector<float
 }
 
 int main() {
+	std::setlocale(LC_ALL, "C");
+
 	auto start = std::chrono::high_resolution_clock::now();
 
 	ReaderCsv readerCsv;
@@ -234,7 +237,7 @@ int main() {
 	std::vector<std::vector<float>> lm = localMax(height_mat, 11);
 
 	cv::Mat lmIm = UtilsCV::GetImage(lm, ColoringMethod::HEIGHT_TO_GRAYSCALE);
-	UtilsCV::Show(lmIm, VIEW_SCALE);
+	//UtilsCV::Show(lmIm, VIEW_SCALE);
 
 	cv::Mat k3 = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
 	cv::dilate(lmIm, lmIm, k3);
@@ -263,7 +266,7 @@ int main() {
 		}
 	}
 
-	UtilsCV::Show(centers, VIEW_SCALE);
+	//UtilsCV::Show(centers, VIEW_SCALE);
 
 	cv::Mat lmBlend = cv::Mat::zeros(lmIm.size(), CV_MAKETYPE(CV_8U, 3));
 
@@ -294,9 +297,67 @@ int main() {
 	}
 	*/
 
+	//UtilsCV::Show(lmBlend, VIEW_SCALE);
+
+	cv::Rect rect(0, 0, lmBlend.cols, lmBlend.rows);
+	cv::Subdiv2D subdiv(rect);
+
+	for (size_t i = 0; i < corners.size(); i++) {
+		subdiv.insert(corners[i]);
+	}
+	for (size_t i = 0; i < cornersTop.size(); i++) {
+		subdiv.insert(cornersTop[i]);
+	}
+
+	std::vector<cv::Vec6f> triangleList;
+	subdiv.getTriangleList(triangleList);
+
+	cv::Scalar delaunay_color(128, 0, 128);
+
+	std::ofstream stlFile(OUTPUT_PATH "temp.stl");
+
+	stlFile.imbue(std::locale::classic());
+	stlFile << std::fixed << std::setprecision(3);
+	stlFile << "solid\n";
+
+	for (size_t i = 0; i < triangleList.size(); ++i) {
+		cv::Vec6f t = triangleList[i];
+		cv::Point pt0(cvRound(t[0]), cvRound(t[1]));
+		cv::Point pt1(cvRound(t[2]), cvRound(t[3]));
+		cv::Point pt2(cvRound(t[4]), cvRound(t[5]));
+
+		float c_x = (pt0.x + pt1.x + pt2.x) / 3.0;
+		float c_y = (pt0.y + pt1.y + pt2.y) / 3.0;
+
+		if (image.at<uchar>(c_y, c_x) != 255) {
+			cv::line(lmBlend, pt0, pt1, delaunay_color, 1);
+			cv::line(lmBlend, pt1, pt2, delaunay_color, 1);
+			cv::line(lmBlend, pt2, pt0, delaunay_color, 1);
+
+			MyPoint p0 = grid.GetGridPointCoord(pt0.x, pt0.y);
+			MyPoint p1 = grid.GetGridPointCoord(pt1.x, pt1.y);
+			MyPoint p2 = grid.GetGridPointCoord(pt2.x, pt2.y);
+
+			/*
+			MyPoint U = p1 - p0;
+			MyPoint V = p2 - p0;
+
+			MyPoint N = U.cross(V).normalize();
+
+			stlFile << "facet normal " << N.x << " " << N.y << " " << N.z << "\n";
+			*/
+			stlFile << "outer loop\n";
+			stlFile << "vertex " << p0.x << " " << p0.y << " " << p0.z << "\n";
+			stlFile << "vertex " << p1.x << " " << p1.y << " " << p1.z << "\n";
+			stlFile << "vertex " << p2.x << " " << p2.y << " " << p2.z << "\n";
+			stlFile << "endloop\n";
+			//stlFile << "endf\n";
+		}
+	}
+	stlFile << "endsolid\n";
+	stlFile.close();
+
 	UtilsCV::Show(lmBlend, VIEW_SCALE);
-
-
 
 	
 	return 0;

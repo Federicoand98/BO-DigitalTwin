@@ -18,10 +18,23 @@ public:
         return std::sqrt(std::pow(other.x - x, 2) + std::pow(other.y - y, 2) + std::pow(other.z - z, 2));
     }
 
+    MyPoint cross(const MyPoint& other) const {
+        return MyPoint(y * other.z - z * other.y, z * other.x - x * other.z, x * other.y - y * other.x);
+    }
+
+    MyPoint normalize() const {
+        float magnitude = std::sqrt(x * x + y * y + z * z);
+        return MyPoint(x / magnitude, y / magnitude, z / magnitude);
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const MyPoint& point) {
         os << std::fixed << std::setprecision(3);
         os << "MyPoint(" << point.x << ", " << point.y << ", " << point.z << ")";
         return os;
+    }
+
+    MyPoint operator-(const MyPoint& other) const {
+        return MyPoint(x - other.x, y - other.y, z - other.z);
     }
 };
 
