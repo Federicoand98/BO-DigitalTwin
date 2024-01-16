@@ -24,68 +24,6 @@
 #include <opencv2/opencv.hpp>
 
 
-std::vector<std::vector<float>> localMax(const std::vector<std::vector<float>>& v, int kernel_size) {
-	int k = kernel_size / 2;
-	std::vector<std::vector<float>> max(v.size(), std::vector<float>(v[0].size(), 0.0));
-	std::vector<std::vector<float>> max_check(v.size(), std::vector<float>(v[0].size(), 0.0));
-
-	for (int i = k; i < v.size() - k; ++i) {
-		for (int j = k; j < v[i].size() - k; ++j) {
-			float temp = 0.0;
-			for (int m = -k; m <= k; ++m) {
-				for (int n = -k; n <= k; ++n) {
-					int i_index = i + m;
-					int j_index = j + n;
-
-					float val = v[i_index][j_index];
-					if (val > temp) {
-						temp = val;
-					}
-				}
-			}
-			max[i][j] = temp;
-		}
-	}
-
-	for (int i = 0; i < v.size(); ++i) {
-		for (int j = 0; j < v[i].size(); ++j) {
-			if (max[i][j] == v[i][j] && v[i][j] != 0.0) {
-				max_check[i][j] = 255.0;
-			}
-			else {
-				max_check[i][j] = 1.0;
-			}
-		}
-	}
-
-	return max_check;
-}
-
-std::vector<std::vector<float>> medianFilter(const std::vector<std::vector<float>>& matrix, int n) {
-	int rows = matrix.size();
-	int cols = matrix[0].size();
-	std::vector<std::vector<float>> result(rows, std::vector<float>(cols));
-
-	for (int i = 0; i < rows; i++) {
-		for (int j = 0; j < cols; j++) {
-			std::vector<float> window;
-
-			for (int x = i - n / 2; x <= i + n / 2; x++) {
-				for (int y = j - n / 2; y <= j + n / 2; y++) {
-					if (x >= 0 && y >= 0 && x < rows && y < cols) {
-						window.push_back(matrix[x][y]);
-					}
-				}
-			}
-
-			std::sort(window.begin(), window.end());
-			result[i][j] = window[window.size() / 2];
-		}
-	}
-
-	return result;
-}
-
 int main() {
 	std::setlocale(LC_ALL, "C");
 
@@ -234,7 +172,7 @@ int main() {
 
 	//UtilsCV::Show(blend, VIEW_SCALE);
 
-	std::vector<std::vector<float>> lm = localMax(height_mat, 11);
+	std::vector<std::vector<float>> lm = grid.GetLocalMax(11);
 
 	cv::Mat lmIm = UtilsCV::GetImage(lm, ColoringMethod::HEIGHT_TO_GRAYSCALE);
 	//UtilsCV::Show(lmIm, VIEW_SCALE);

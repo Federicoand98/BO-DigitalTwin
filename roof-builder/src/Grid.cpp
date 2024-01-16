@@ -211,8 +211,6 @@ std::vector<std::vector<float>> Grid::GetSobelGradient() {
     return grad;
 }
 
-
-
 MyPoint Grid::GetGridPointCoord(int gridX, int gridY) {
     // 0 - 0 in the opencv image is on top left not on bottom left (as in our matrix
     float x = minX + cellSize * gridX;
@@ -237,4 +235,42 @@ MyPoint Grid::GetGridPointCoord(int gridX, int gridY) {
     kdtree.findNeighbors(resultSet, &query_pt[0], nf::SearchParams(10));
 
     return cloud.pts[ret_index];
+}
+
+std::vector<std::vector<float>> Grid::GetLocalMax(int kernel_size) {
+    std::vector<std::vector<float>>& v = heightMat;
+    int k = kernel_size / 2;
+    std::vector<std::vector<float>> max(v.size(), std::vector<float>(v[0].size(), 0.0));
+    std::vector<std::vector<float>> max_check(v.size(), std::vector<float>(v[0].size(), 0.0));
+
+    for (int i = k; i < v.size() - k; ++i) {
+        for (int j = k; j < v[i].size() - k; ++j) {
+            float temp = 0.0;
+            for (int m = -k; m <= k; ++m) {
+                for (int n = -k; n <= k; ++n) {
+                    int i_index = i + m;
+                    int j_index = j + n;
+
+                    float val = v[i_index][j_index];
+                    if (val > temp) {
+                        temp = val;
+                    }
+                }
+            }
+            max[i][j] = temp;
+        }
+    }
+
+    for (int i = 0; i < v.size(); ++i) {
+        for (int j = 0; j < v[i].size(); ++j) {
+            if (max[i][j] == v[i][j] && v[i][j] != 0.0) {
+                max_check[i][j] = 255.0;
+            }
+            else {
+                max_check[i][j] = 1.0;
+            }
+        }
+    }
+
+    return max_check;
 }
