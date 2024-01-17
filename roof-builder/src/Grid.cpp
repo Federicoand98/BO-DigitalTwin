@@ -237,6 +237,32 @@ MyPoint Grid::GetGridPointCoord(int gridX, int gridY) {
     return cloud.pts[ret_index];
 }
 
+std::vector<std::vector<float>> Grid::GetBooleanRoof() {
+    std::vector<std::vector<float>> res = heightMat;
+    float minZ = std::numeric_limits<float>::max();
+    float maxZ = std::numeric_limits<float>::min();
+
+    for (const auto& row : heightMat) {
+        for (const auto& z : row) {
+            if (z > 0.0f) {
+                minZ = std::min(minZ, z);
+            }
+            maxZ = std::max(maxZ, z);
+        }
+    }
+
+    for (int i = 0; i < res.size(); i++) {
+        for (int j = 0; j < res[0].size(); j++) {
+            if (res[i][j] > minZ) {
+                res[i][j] = minZ;
+            }
+        }
+    }
+
+    return res;
+}
+
+
 std::vector<std::vector<float>> Grid::GetLocalMax(int kernel_size) {
     std::vector<std::vector<float>>& v = heightMat;
     int k = kernel_size / 2;

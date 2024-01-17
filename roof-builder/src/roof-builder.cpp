@@ -108,27 +108,7 @@ int main() {
 
 	std::vector<std::vector<float>> height_mat = grid.GetHeightMat();
 
-	std::vector<std::vector<float>> f1 = height_mat;
-
-	float minZ = std::numeric_limits<float>::max();
-	float maxZ = std::numeric_limits<float>::min();
-
-	for (const auto& row : height_mat) {
-		for (const auto& z : row) {
-			if (z > 0.0f) {
-				minZ = std::min(minZ, z);
-			}
-			maxZ = std::max(maxZ, z);
-		}
-	}
-
-	for (int i = 0; i < f1.size(); i++) {
-		for (int j = 0; j < f1[0].size(); j++) {
-			if (f1[i][j] > minZ) {
-				f1[i][j] = minZ;
-			}
-		}
-	}
+	std::vector<std::vector<float>> f1 = grid.GetBooleanRoof();
 
 	//UtilsCV::Show(f1, ColoringMethod::HEIGHT_TO_GRAYSCALE, VIEW_SCALE);
 

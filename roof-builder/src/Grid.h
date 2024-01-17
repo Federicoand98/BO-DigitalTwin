@@ -18,6 +18,7 @@ public:
     std::vector<std::vector<float>> GetSobelGradient();
     MyPoint GetGridPointCoord(int grid_x, int grid_y);
     std::vector<std::vector<float>> GetLocalMax(int kernel_size);
+    std::vector<std::vector<float>> GetBooleanRoof();
 
     float GetMinX() const { return minX; }
     float GetMaxX() const { return maxX; }
