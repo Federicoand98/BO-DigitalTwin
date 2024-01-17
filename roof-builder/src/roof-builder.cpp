@@ -17,7 +17,7 @@
 #include "Grid.h"
 #include "Building.h"
 #include "Dbscan.h"
-#include "UtilsCV.h"
+#include "ImageProcessing/UtilsCV.h"
 #include "Readers/ReaderCsv.h"
 
 #include "Printer.h"
