@@ -184,7 +184,6 @@ int main() {
 
 	cv::Mat centers = cv::Mat::zeros(lmIm.size(), CV_8UC1);
 
-	int e = 0;
 	for (const auto& contour : contours) {
 		cv::Moments m = cv::moments(contour);
 		if (m.m00 != 0) {
