@@ -167,6 +167,7 @@ public:
         }
 
         m_ProccessingUnits.clear();
+        m_ResultPoint.clear();
     }
 
     void AddProcessingUnit(ImageProcessingUnit* processingUnit) {
@@ -176,14 +177,17 @@ public:
     void Process() {
         for (ImageProcessingUnit* unit : m_ProccessingUnits) {
             if (unit->IsFinalUnit())
-                unit->Finalize(m_Image);
+                m_ResultPoint = unit->Finalize(m_Image);
             else
                 unit->Process(m_Image);
         }
     }
 
+    std::vector<cv::Point2f> GetOutput() { return m_ResultPoint; }
+
 private:
     std::vector<ImageProcessingUnit*> m_ProccessingUnits;
+    std::vector<cv::Point2f> m_ResultPoint;
     cv::Mat m_Image;
 };
 
