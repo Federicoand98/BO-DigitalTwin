@@ -3,6 +3,7 @@
 #include <vector>
 #include <math.h>
 #include <opencv2/opencv.hpp>
+#include "ImageProcessingUnit.h"
 
 enum class ColoringMethod {
     HEIGHT_TO_GRAYSCALE,
@@ -15,73 +16,62 @@ struct RGBColor {
     float b;
 };
 
-static RGBColor HeightToRainbow(float z, float min, float max) {
-    RGBColor color;
-    if (z == 0.0f) {
-        color.r = 1.0f;
-        color.g = 1.0f;
-        color.b = 1.0f;
+class ImageProcesserFactory {
+public:
+    static std::shared_ptr<ImageProcesser> CreateEdgePipeline(std::vector<std::vector<float>>& matrix) {
+        std::shared_ptr<ImageProcesser> processer = std::make_shared<ImageProcesser>(matrix);
+
+        /*
+        ImageProcessingUnit* canny = new CannyUnit(1, 50, 150);
+        processer->AddProcessingUnit(canny);
+        */
+
+        return processer;
     }
-    else {
-        float normalizedValue = (z - min) / (max - min);
 
-        float hue = normalizedValue * 360.0f;
-        float saturation = 1.0f;
-        float value = 1.0f;
+    static std::shared_ptr<ImageProcesser> CreateRidgePipeline(std::vector<std::vector<float>>& matrix) {
+        std::shared_ptr<ImageProcesser> processer = std::make_shared<ImageProcesser>(matrix);
 
-        int h = static_cast<int>(hue / 60.0f) % 6;
-        float f = hue / 60.0f - h;
-        float p = value * (1.0f - saturation);
-        float q = value * (1.0f - f * saturation);
-        float t = value * (1.0f - (1.0f - f) * saturation);
+        /*
+        ImageProcessingUnit* canny = new CannyUnit(1, 50, 150);
+        processer->AddProcessingUnit(canny);
+        */
 
-        switch (h) {
-        case 0:
-            color.r = static_cast<int>(value * 255);
-            color.g = static_cast<int>(t * 255);
-            color.b = static_cast<int>(p * 255);
-            break;
-        case 1:
-            color.r = static_cast<int>(q * 255);
-            color.g = static_cast<int>(value * 255);
-            color.b = static_cast<int>(p * 255);
-            break;
-        case 2:
-            color.r = static_cast<int>(p * 255);
-            color.g = static_cast<int>(value * 255);
-            color.b = static_cast<int>(t * 255);
-            break;
-        case 3:
-            color.r = static_cast<int>(p * 255);
-            color.g = static_cast<int>(q * 255);
-            color.b = static_cast<int>(value * 255);
-            break;
-        case 4:
-            color.r = static_cast<int>(t * 255);
-            color.g = static_cast<int>(p * 255);
-            color.b = static_cast<int>(value * 255);
-            break;
-        case 5:
-        default:
-            color.r = static_cast<int>(value * 255);
-            color.g = static_cast<int>(p * 255);
-            color.b = static_cast<int>(q * 255);
-            break;
+        return processer;
+    }
+};
+
+class ImageProcesser {
+public:
+    ImageProcesser(std::vector<std::vector<float>>& baseMatrix) {
+        m_Image = UtilsCV::GetImage(baseMatrix, ColoringMethod::HEIGHT_TO_GRAYSCALE);
+    }
+
+	~ImageProcesser() {
+        for (ImageProcessingUnit* unit : m_ProccessingUnits) {
+            delete unit;
+        }
+
+        m_ProccessingUnits.clear();
+    }
+
+    void AddProcessingUnit(ImageProcessingUnit* processingUnit) {
+        m_ProccessingUnits.push_back(processingUnit);
+    }
+
+    void Process() {
+        for (ImageProcessingUnit* unit : m_ProccessingUnits) {
+            if (unit->IsFinalUnit())
+                unit->Finalize(m_Image);
+            else
+                unit->Process(m_Image);
         }
     }
-    
-    return color;
-}
 
-static uchar HeightToGrayscale(float z, float minZ, float maxZ) {
-    if (z == 0.0f) {
-        return static_cast<uchar>(255);
-    }
-    else {
-        float normalized_z = (z - minZ) / (maxZ - minZ);
-        return static_cast<uchar>(normalized_z * 255.0f);
-    }
-}
+private:
+    std::vector<ImageProcessingUnit*> m_ProccessingUnits;
+    cv::Mat m_Image;
+};
 
 class UtilsCV {
 public:
@@ -153,3 +143,71 @@ public:
         cv::waitKey(1);
     }
 };
+
+static RGBColor HeightToRainbow(float z, float min, float max) {
+    RGBColor color;
+    if (z == 0.0f) {
+        color.r = 1.0f;
+        color.g = 1.0f;
+        color.b = 1.0f;
+    }
+    else {
+        float normalizedValue = (z - min) / (max - min);
+
+        float hue = normalizedValue * 360.0f;
+        float saturation = 1.0f;
+        float value = 1.0f;
+
+        int h = static_cast<int>(hue / 60.0f) % 6;
+        float f = hue / 60.0f - h;
+        float p = value * (1.0f - saturation);
+        float q = value * (1.0f - f * saturation);
+        float t = value * (1.0f - (1.0f - f) * saturation);
+
+        switch (h) {
+        case 0:
+            color.r = static_cast<int>(value * 255);
+            color.g = static_cast<int>(t * 255);
+            color.b = static_cast<int>(p * 255);
+            break;
+        case 1:
+            color.r = static_cast<int>(q * 255);
+            color.g = static_cast<int>(value * 255);
+            color.b = static_cast<int>(p * 255);
+            break;
+        case 2:
+            color.r = static_cast<int>(p * 255);
+            color.g = static_cast<int>(value * 255);
+            color.b = static_cast<int>(t * 255);
+            break;
+        case 3:
+            color.r = static_cast<int>(p * 255);
+            color.g = static_cast<int>(q * 255);
+            color.b = static_cast<int>(value * 255);
+            break;
+        case 4:
+            color.r = static_cast<int>(t * 255);
+            color.g = static_cast<int>(p * 255);
+            color.b = static_cast<int>(value * 255);
+            break;
+        case 5:
+        default:
+            color.r = static_cast<int>(value * 255);
+            color.g = static_cast<int>(p * 255);
+            color.b = static_cast<int>(q * 255);
+            break;
+        }
+    }
+    
+    return color;
+}
+
+static uchar HeightToGrayscale(float z, float minZ, float maxZ) {
+    if (z == 0.0f) {
+        return static_cast<uchar>(255);
+    }
+    else {
+        float normalized_z = (z - minZ) / (maxZ - minZ);
+        return static_cast<uchar>(normalized_z * 255.0f);
+    }
+}

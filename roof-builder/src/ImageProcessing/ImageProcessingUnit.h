@@ -7,7 +7,8 @@
 class ImageProcessingUnit {
 public:
 	virtual void Process(cv::Mat& inputMatrix);
-	virtual std::vector<cv::Point2f> Finalize(cv::Mat& inputMatrix);
+	virtual std::vector<cv::Point2f> Finalize(cv::Mat& inputMatrix, int maxFeatures = 0);
+	virtual bool IsFinalUnit();
 };
 
 class CannyUnit : public ImageProcessingUnit {
