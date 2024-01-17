@@ -1,5 +1,7 @@
 #pragma once
 
+#define VIEW_SCALE 1.5
+
 #include <vector>
 #include <math.h>
 #include <opencv2/opencv.hpp>
@@ -132,7 +134,7 @@ public:
         return image;
     }
 
-    static void Show(cv::Mat& image, float scale) {
+    static void Show(cv::Mat& image, float scale = VIEW_SCALE) {
         cv::Mat res;
         cv::resize(image, res, cv::Size(), scale, scale, cv::INTER_LINEAR);
         cv::imshow("Result", res);
@@ -142,7 +144,7 @@ public:
         cv::waitKey(1);
     }
 
-    static void Show(std::vector<std::vector<float>>& mat, ColoringMethod method, float scale) {
+    static void Show(std::vector<std::vector<float>>& mat, ColoringMethod method, float scale = VIEW_SCALE) {
         cv::Mat image = GetImage(mat, method);
 
         cv::Mat res;
@@ -157,8 +159,9 @@ public:
 
 class ImageProcesser {
 public:
-    ImageProcesser(std::vector<std::vector<float>>& baseMatrix) {
+    ImageProcesser(std::vector<std::vector<float>>& baseMatrix, bool showSteps) {
         m_Image = UtilsCV::GetImage(baseMatrix, ColoringMethod::HEIGHT_TO_GRAYSCALE);
+        m_ShowSteps = showSteps;
     }
 
     ~ImageProcesser() {
@@ -174,12 +177,35 @@ public:
         m_ProccessingUnits.push_back(processingUnit);
     }
 
-    void Process() {
+    void Process(int maxFeatures = 0) {
+        if (m_ShowSteps)
+            UtilsCV::Show(m_Image, VIEW_SCALE);
         for (ImageProcessingUnit* unit : m_ProccessingUnits) {
-            if (unit->IsFinalUnit())
-                m_ResultPoint = unit->Finalize(m_Image);
-            else
+            if (unit->IsFinalUnit()) {
+                m_ResultPoint = unit->Finalize(m_Image, maxFeatures);
+                if (m_ShowSteps) {
+                    cv::Mat tempImg = cv::Mat::zeros(m_Image.size(), CV_MAKETYPE(CV_8U, 3));
+
+                    for (int i = 0; i < m_Image.rows; i++) {
+                        for (int j = 0; j < m_Image.cols; j++) {
+                            if (m_Image.at<uchar>(i, j) > 0) {
+                                tempImg.at<cv::Vec3b>(i, j) = cv::Vec3b(0, 0, 255); // BGR
+                            }
+                        }
+                    }
+                    for (size_t i = 0; i < m_ResultPoint.size(); i++) {
+                        circle(tempImg, m_ResultPoint[i], 0.1, cv::Scalar(0, 255, 0), 2); // BGR
+                    }
+
+                    UtilsCV::Show(tempImg, VIEW_SCALE);
+                }
+            }
+            else {
                 unit->Process(m_Image);
+                if (m_ShowSteps)
+                    UtilsCV::Show(m_Image, VIEW_SCALE);
+            }
+            
         }
     }
 
@@ -189,17 +215,18 @@ private:
     std::vector<ImageProcessingUnit*> m_ProccessingUnits;
     std::vector<cv::Point2f> m_ResultPoint;
     cv::Mat m_Image;
+    bool m_ShowSteps;
 };
 
 class ImageProcesserFactory {
 public:
-    static std::shared_ptr<ImageProcesser> CreateEdgePipeline(std::vector<std::vector<float>>& matrix) {
-        std::shared_ptr<ImageProcesser> processer = std::make_shared<ImageProcesser>(matrix);
+    static std::shared_ptr<ImageProcesser> CreateEdgePipeline(std::vector<std::vector<float>>& matrix, bool showSteps = false) {
+        std::shared_ptr<ImageProcesser> processer = std::make_shared<ImageProcesser>(matrix, showSteps);
 
         ImageProcessingUnit* blur = new BlurUnit(3.5);
         ImageProcessingUnit* canny = new CannyUnit(50.0, 150.0);
         ImageProcessingUnit* morph = new MorphologyUnit(cv::MORPH_CLOSE, 
-            cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5)), cv::Point(-1,-1), 2);
+            cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5)), 2);
         ImageProcessingUnit* feats = new FeaturesUnit(0.1, 10.0, 9);
         processer->AddProcessingUnit(blur);
         processer->AddProcessingUnit(canny);
@@ -209,8 +236,8 @@ public:
         return processer;
     }
 
-    static std::shared_ptr<ImageProcesser> CreateRidgePipeline(std::vector<std::vector<float>>& matrix) {
-        std::shared_ptr<ImageProcesser> processer = std::make_shared<ImageProcesser>(matrix);
+    static std::shared_ptr<ImageProcesser> CreateRidgePipeline(std::vector<std::vector<float>>& matrix, bool showSteps = false) {
+        std::shared_ptr<ImageProcesser> processer = std::make_shared<ImageProcesser>(matrix, showSteps);
 
         ImageProcessingUnit* centers = new FindCentersUnit();
         processer->AddProcessingUnit(centers);

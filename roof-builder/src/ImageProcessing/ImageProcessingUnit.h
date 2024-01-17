@@ -6,9 +6,9 @@
 
 class ImageProcessingUnit {
 public:
-	virtual void Process(cv::Mat& inputMatrix);
-	virtual std::vector<cv::Point2f> Finalize(cv::Mat& inputMatrix, int maxFeatures = 0);
-	virtual bool IsFinalUnit();
+	virtual void Process(cv::Mat& ioMatrix) = 0;
+	virtual std::vector<cv::Point2f> Finalize(cv::Mat& ioMatrix, int maxFeatures = 0) = 0;
+	virtual bool IsFinalUnit() = 0;
 };
 
 class BlurUnit : public ImageProcessingUnit {
@@ -16,8 +16,12 @@ public:
 	BlurUnit(float sigma = 1.0, cv::Size ksize = cv::Size(0, 0)) : m_IsFinalUnit(false), m_Sigma(sigma), m_Ksize(ksize) {}
 	~BlurUnit() {}
 
-	void Process(cv::Mat& inputMatrix) override {
-		cv::GaussianBlur(inputMatrix, inputMatrix, m_Ksize, m_Sigma);
+	void Process(cv::Mat& ioMatrix) override {
+		cv::GaussianBlur(ioMatrix, ioMatrix, m_Ksize, m_Sigma);
+	}
+
+	std::vector<cv::Point2f> Finalize(cv::Mat& ioMatrix, int maxFeatures = 0) override {
+		return std::vector<cv::Point2f>();
 	}
 
 	bool IsFinalUnit() override { return m_IsFinalUnit; }
@@ -33,8 +37,12 @@ public:
 	CannyUnit(float hr = 150.0, float hl = 50.0) : m_IsFinalUnit(false), m_Hr(hr), m_Hl(hl) {}
 	~CannyUnit() {}
 
-	void Process(cv::Mat& inputMatrix) override {
-		cv::Canny(inputMatrix, inputMatrix, m_Hl, m_Hr);
+	void Process(cv::Mat& ioMatrix) override {
+		cv::Canny(ioMatrix, ioMatrix, m_Hl, m_Hr);
+	}
+
+	std::vector<cv::Point2f> Finalize(cv::Mat& ioMatrix, int maxFeatures = 0) override {
+		return std::vector<cv::Point2f>();
 	}
 
 	bool IsFinalUnit() override { return m_IsFinalUnit; }
@@ -46,12 +54,16 @@ private:
 
 class MorphologyUnit : public ImageProcessingUnit {
 public:
-	MorphologyUnit(cv::MorphTypes op, cv::InputArray kernel, cv::Point anchor = cv::Point(-1, -1), int iters = 1) : m_IsFinalUnit(false), m_Operator(op),
-		m_Kernel(kernel), m_Anchor(anchor), m_Iters(iters) {}
+	MorphologyUnit(cv::MorphTypes op, cv::InputArray kernel, int iters = 1) : m_IsFinalUnit(false), m_Operator(op),
+		m_Kernel(kernel), m_Iters(iters) {}
 	~MorphologyUnit() {}
 
-	void Process(cv::Mat& inputMatrix) override {
-		cv::morphologyEx(inputMatrix, inputMatrix, m_Operator, m_Kernel, m_Anchor, m_Iters);
+	void Process(cv::Mat& ioMatrix) override {
+		cv::morphologyEx(ioMatrix, ioMatrix, m_Operator, m_Kernel, cv::Point(-1, -1), m_Iters);
+	}
+
+	std::vector<cv::Point2f> Finalize(cv::Mat& inputMatrix, int maxFeatures = 0) override {
+		return std::vector<cv::Point2f>();
 	}
 
 	bool IsFinalUnit() override { return m_IsFinalUnit; }
@@ -60,7 +72,6 @@ private:
 	bool m_IsFinalUnit;
 	cv::MorphTypes m_Operator;
 	cv::InputArray m_Kernel;
-	cv::Point m_Anchor;
 	int m_Iters;
 };
 
@@ -70,9 +81,11 @@ public:
 		m_MinDistance(minDistance), m_BlockSize(blockSize) {}
 	~FeaturesUnit() {}
 
-	std::vector<cv::Point2f> Finalize(cv::Mat& inputMatrix, int maxFeatures = 0) override {
+	void Process(cv::Mat& ioMatrix) override {};
+
+	std::vector<cv::Point2f> Finalize(cv::Mat& ioMatrix, int maxFeatures = 0) override {
 		std::vector<cv::Point2f> result;
-		cv::goodFeaturesToTrack(inputMatrix, result, maxFeatures, m_QualityLevel, m_MinDistance, cv::Mat(), m_BlockSize, false, 0.04);
+		cv::goodFeaturesToTrack(ioMatrix, result, maxFeatures, m_QualityLevel, m_MinDistance, cv::Mat(), m_BlockSize, false, 0.04);
 
 		return result;
 	}
@@ -90,15 +103,17 @@ public:
 	FindCentersUnit() : m_IsFinalUnit(true) {}
 	~FindCentersUnit() {}
 
-	std::vector<cv::Point2f> Finalize(cv::Mat& inputMatrix, int maxFeatures = 0) override {
+	void Process(cv::Mat& ioMatrix) override {};
+
+	std::vector<cv::Point2f> Finalize(cv::Mat& ioMatrix, int maxFeatures = 0) override {
 		std::vector<cv::Point2f> result;
 
 		cv::Mat k3 = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
-		cv::dilate(inputMatrix, inputMatrix, k3);
+		cv::dilate(ioMatrix, ioMatrix, k3);
 		std::vector<std::vector<cv::Point>> contours;
-		cv::findContours(inputMatrix, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+		cv::findContours(ioMatrix, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
-		cv::Mat centers = cv::Mat::zeros(inputMatrix.size(), CV_8UC1);
+		cv::Mat centers = cv::Mat::zeros(ioMatrix.size(), CV_8UC1);
 
 		for (const auto& contour : contours) {
 			cv::Moments m = cv::moments(contour);
