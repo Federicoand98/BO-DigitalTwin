@@ -14,10 +14,12 @@
 #include "Dbscan.h"
 #include "ImageProcessing/UtilsCV.h"
 #include "Readers/ReaderCsv.h"
-
 #include "Printer.h"
 
-#define SHOW_RESULT true
+#include "Triangle/Triangle.h"
+
+#define SHOW_RESULT false
+#define SHOW_STEPS false
 
 class Program {
 public:
@@ -102,8 +104,8 @@ void Program::Execute() {
 		std::vector<std::vector<float>> br = grid.GetBooleanRoof();
 		std::vector<std::vector<float>> lm = grid.GetLocalMax(11);
 
-		std::shared_ptr<ImageProcesser> roofEdgeProcesser = ImageProcesserFactory::CreateEdgePipeline(br);
-		std::shared_ptr<ImageProcesser> ridgeEdgeProcesser = ImageProcesserFactory::CreateRidgePipeline(lm);
+		std::shared_ptr<ImageProcesser> roofEdgeProcesser = ImageProcesserFactory::CreateEdgePipeline(br, SHOW_STEPS);
+		std::shared_ptr<ImageProcesser> ridgeEdgeProcesser = ImageProcesserFactory::CreateRidgePipeline(lm, SHOW_STEPS);
 
 		roofEdgeProcesser->Process(buildingCornerNumb);
 		std::vector<cv::Point2f> roofResult = roofEdgeProcesser->GetOutput();	// TODO: cambiare cv::Point2f
