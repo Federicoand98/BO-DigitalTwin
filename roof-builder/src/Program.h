@@ -16,7 +16,7 @@
 #include "Readers/ReaderCsv.h"
 #include "Printer.h"
 
-#include "Triangle/Triangle.h"
+#include "Triangle/TriangleWrap.h"
 
 #define SHOW_RESULT false
 #define SHOW_STEPS false
@@ -99,7 +99,6 @@ void Program::Execute() {
 		grid.Init(mainCluster, 0.1, 2.0, 0.2);
 		grid.FillHoles(3, 3);
 		targetPoints.clear();
-
 
 		std::vector<std::vector<float>> br = grid.GetBooleanRoof();
 		std::vector<std::vector<float>> lm = grid.GetLocalMax(11);

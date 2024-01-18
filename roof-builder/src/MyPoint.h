@@ -38,6 +38,90 @@ public:
     }
 };
 
+class MyPoint2 {
+public:
+    float x, y;
+
+    MyPoint2(float x, float y) : x(x), y(y) {}
+
+    float distance(const MyPoint2& other) const {
+        return std::sqrt(std::pow(other.x - x, 2) + std::pow(other.y - y, 2));
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const MyPoint2& point) {
+        os << std::fixed << std::setprecision(3);
+        os << "MyPoint2(" << point.x << ", " << point.y << ")";
+        return os;
+    }
+
+    MyPoint2 operator-(const MyPoint2& other) const {
+        return MyPoint2(x - other.x, y - other.y);
+    }
+};
+
+class MyTriangle {
+public:
+    MyPoint p1, p2, p3;
+
+    MyTriangle(const MyPoint& p1, const MyPoint& p2, const MyPoint& p3) : p1(p1), p2(p2), p3(p3) {}
+
+    float perimeter() const {
+        return p1.distance(p2) + p2.distance(p3) + p3.distance(p1);
+    }
+
+    float area() const {
+        MyPoint a = p2 - p1;
+        MyPoint b = p3 - p1;
+        return a.cross(b).normalize().distance(MyPoint(0, 0, 0)) / 2.0;
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const MyTriangle& triangle) {
+        os << std::fixed << std::setprecision(3);
+        os << "MyTriangle(" << triangle.p1 << ", " << triangle.p2 << ", " << triangle.p3 << ")";
+        return os;
+    }
+};
+
+class MyTriangle2 {
+public:
+    MyPoint2 p1, p2, p3;
+
+    MyTriangle2(const MyPoint2& p1, const MyPoint2& p2, const MyPoint2& p3) : p1(p1), p2(p2), p3(p3) {}
+
+    float perimeter() const {
+        return p1.distance(p2) + p2.distance(p3) + p3.distance(p1);
+    }
+
+    float area() const {
+        return std::abs((p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y)) / 2.0);
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const MyTriangle2& triangle) {
+        os << std::fixed << std::setprecision(3);
+        os << "MyTriangle2(" << triangle.p1 << ", " << triangle.p2 << ", " << triangle.p3 << ")";
+        return os;
+    }
+};
+
+template <class T>
+class MyMesh {
+public:
+    std::vector<T> triangles;
+
+    void addTriangle(const T& triangle) {
+        triangles.push_back(triangle);
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const MyMesh<T>& mesh) {
+        os << "MyMesh(";
+        for (const auto& triangle : mesh.triangles) {
+            os << "\n" << triangle;
+        }
+        os << "\n)";
+        return os;
+    }
+};
+
 struct PointCloud {
     std::vector<MyPoint>  pts;
 
