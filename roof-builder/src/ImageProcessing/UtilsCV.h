@@ -6,6 +6,7 @@
 #include <math.h>
 #include <opencv2/opencv.hpp>
 #include "ImageProcessingUnit.h"
+#include "../MyPoint.h"
 
 enum class ColoringMethod {
     HEIGHT_TO_GRAYSCALE,
@@ -209,7 +210,13 @@ public:
         }
     }
 
-    std::vector<cv::Point2f> GetOutput() { return m_ResultPoint; }
+    std::vector<MyPoint2> GetOutput() {
+        std::vector<MyPoint2> myPoints;
+        for (const auto& point : m_ResultPoint) {
+            myPoints.push_back(MyPoint2(point.x, point.y));
+        }
+        return myPoints;
+    }
 
 private:
     std::vector<ImageProcessingUnit*> m_ProccessingUnits;

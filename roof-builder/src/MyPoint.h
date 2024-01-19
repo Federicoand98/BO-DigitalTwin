@@ -3,6 +3,7 @@
 #include <vector>
 #include <iostream>
 #include <iomanip>
+#include <sstream>
 
 class MyPoint {
 public:
@@ -29,9 +30,17 @@ public:
 
     friend std::ostream& operator<<(std::ostream& os, const MyPoint& point) {
         os << std::fixed << std::setprecision(3);
-        os << "MyPoint(" << point.x << ", " << point.y << ", " << point.z << ")";
+        os << point.x << " " << point.y << " " << point.z;
         return os;
     }
+
+    std::string toString() const {
+        std::ostringstream os;
+        os << std::fixed << std::setprecision(3);
+        os << "MyPoint(" << x << ", " << y << ", " << z << ")";
+        return os.str();
+    }
+
 
     MyPoint operator-(const MyPoint& other) const {
         return MyPoint(x - other.x, y - other.y, z - other.z);
@@ -52,6 +61,13 @@ public:
         os << std::fixed << std::setprecision(3);
         os << "MyPoint2(" << point.x << ", " << point.y << ")";
         return os;
+    }
+
+    std::string toString() const {
+        std::ostringstream os;
+        os << std::fixed << std::setprecision(3);
+        os << "MyPoint2(" << x << ", " << y << ")";
+        return os.str();
     }
 
     MyPoint2 operator-(const MyPoint2& other) const {
@@ -77,8 +93,15 @@ public:
 
     friend std::ostream& operator<<(std::ostream& os, const MyTriangle& triangle) {
         os << std::fixed << std::setprecision(3);
-        os << "MyTriangle(" << triangle.p1 << ", " << triangle.p2 << ", " << triangle.p3 << ")";
+        os << triangle.p1 << " - " << triangle.p2 << " - " << triangle.p3;
         return os;
+    }
+
+    std::string toString() const {
+        std::ostringstream os;
+        os << std::fixed << std::setprecision(3);
+        os << "MyTriangle(" << p1.toString() << ", " << p2.toString() << ", " << p3.toString() << ")";
+        return os.str();
     }
 };
 
@@ -101,24 +124,40 @@ public:
         os << "MyTriangle2(" << triangle.p1 << ", " << triangle.p2 << ", " << triangle.p3 << ")";
         return os;
     }
+
+    std::string toString() const {
+        std::ostringstream os;
+        os << std::fixed << std::setprecision(3);
+        os << "MyTriangle2(" << p1.toString() << ", " << p2.toString() << ", " << p3.toString() << ")";
+        return os.str();
+    }
 };
 
-template <class T>
 class MyMesh {
 public:
-    std::vector<T> triangles;
+    std::vector<MyTriangle> triangles;
 
-    void addTriangle(const T& triangle) {
+    void addTriangle(const MyTriangle& triangle) {
         triangles.push_back(triangle);
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const MyMesh<T>& mesh) {
+    friend std::ostream& operator<<(std::ostream& os, const MyMesh& mesh) {
         os << "MyMesh(";
         for (const auto& triangle : mesh.triangles) {
             os << "\n" << triangle;
         }
         os << "\n)";
         return os;
+    }
+
+    std::string toString() const {
+        std::ostringstream os;
+        os << "MyMesh(";
+        for (const auto& triangle : triangles) {
+            os << "\n" << triangle.toString();
+        }
+        os << "\n)";
+        return os.str();
     }
 };
 
