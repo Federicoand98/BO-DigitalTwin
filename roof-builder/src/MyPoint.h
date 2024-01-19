@@ -137,6 +137,8 @@ class MyMesh {
 public:
     std::vector<MyTriangle> triangles;
 
+    MyMesh(std::vector<MyTriangle>& tris) : triangles(tris) {}
+
     void addTriangle(const MyTriangle& triangle) {
         triangles.push_back(triangle);
     }

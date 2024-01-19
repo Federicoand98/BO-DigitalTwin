@@ -1,6 +1,10 @@
 #include "TriangleWrap.h"
 
-TriangleWrapper::TriangleWrapper() {
+TriangleWrapper::TriangleWrapper() {}
+
+TriangleWrapper::~TriangleWrapper() {}
+
+void TriangleWrapper::Initialize() {
 	m_Out.pointlist = (REAL*)NULL;
 	m_Out.pointattributelist = (REAL*)NULL;
 	m_Out.pointmarkerlist = (int*)NULL;
@@ -13,9 +17,7 @@ TriangleWrapper::TriangleWrapper() {
 	m_Out.edgemarkerlist = (int*)NULL;
 }
 
-TriangleWrapper::~TriangleWrapper() {}
-
-void TriangleWrapper::UploadPoints(const std::vector<MyPoint2>& constrainedPoints, const std::vector<MyPoint2>& other = {}) {
+void TriangleWrapper::UploadPoints(const std::vector<MyPoint2>& constrainedPoints, const std::vector<MyPoint2>& other) {
 	m_In.numberofpoints = constrainedPoints.size() + other.size();
 	m_In.numberofsegments = constrainedPoints.size();
 	m_In.numberofpointattributes = 0;
@@ -35,10 +37,11 @@ void TriangleWrapper::UploadPoints(const std::vector<MyPoint2>& constrainedPoint
 	}
 
 	// Upload interior Points
-	for (int i = constrainedPoints.size(); i < m_In.numberofpoints; i++) {
-		m_In.pointlist[i * 2] = other.at(i).x;
-		m_In.pointlist[i * 2 + 1] = other.at(i).y;
+	for (int i = constrainedPoints.size(), j = 0; i < m_In.numberofpoints; i++, j++) {
+		m_In.pointlist[i * 2] = other.at(j).x;
+		m_In.pointlist[i * 2 + 1] = other.at(j).y;
 	}
+
 
 	// Define markers
 	for (int i = 0; i < constrainedPoints.size(); i++)
@@ -61,8 +64,8 @@ void TriangleWrapper::UploadPoints(const std::vector<MyPoint2>& constrainedPoint
 }
 
 std::vector<MyTriangle2> TriangleWrapper::Triangulate() {
-	char cmd[] "pz";
-	triangulate(cmd, &m_In, &m_Out, (struct TriangleIO*)NULL);
+	char cmd[] = "pz";
+	triangulate(cmd, &m_In, &m_Out, (struct triangulateio*)NULL);
 
 	std::vector<MyTriangle2> triangles;
 

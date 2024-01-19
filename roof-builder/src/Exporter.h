@@ -5,8 +5,10 @@
 
 class Exporter {
 public:
-	static int ExportStl(MyMesh mesh, std::string& fileName) {
+    static int ExportStl(MyMesh mesh, std::string& fileName) {
         std::ostringstream os;
+        os.imbue(std::locale::classic());
+        os << std::fixed << std::setprecision(3);
         os << "solid\n";
         for (const auto& t : mesh.triangles) {
             os << "outer loop\n";
@@ -18,11 +20,13 @@ public:
         os << "endsolid\n";
 
         return Writer::Write(fileName, os.str());
-	}
+    }
 
-	static int ExportStl(std::vector<MyMesh> meshes, std::string& fileName) {
+    static int ExportStl(std::vector<MyMesh> meshes, std::string& fileName) {
         std::ostringstream os;
-        for each (MyMesh m in meshes) {
+        os.imbue(std::locale::classic());
+        os << std::fixed << std::setprecision(3);
+        for (MyMesh m : meshes) {
             os << "solid\n";
             for (const auto& t : m.triangles) {
                 os << "outer loop\n";
@@ -35,5 +39,5 @@ public:
         }
 
         return Writer::Write(fileName, os.str());
-	}
-}
+    }
+};

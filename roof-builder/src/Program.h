@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <chrono>
 #include <locale>
+#include <algorithm>
 #include "Readers/ReaderLas.h"
 #include "Grid.h"
 #include "Building.h"
@@ -15,10 +16,10 @@
 #include "ImageProcessing/UtilsCV.h"
 #include "Readers/ReaderCsv.h"
 #include "Printer.h"
-
 #include "Triangle/TriangleWrap.h"
+#include "Exporter.h"
 
-#define SHOW_RESULT false
+#define SHOW_RESULT true
 #define SHOW_STEPS false
 
 class Program {
@@ -63,10 +64,11 @@ void Program::Execute() {
 	}
 
 	readerCsv.Flush();
+	std::vector<MyMesh> meshes;
+	std::string filePath(OUTPUT_PATH "temp.stl");
 
 	// TODO: possibile filtro sugli edifici che appartengono a determinati tile
 	for (std::shared_ptr<Building> building : buildings) {
-
 		int buildingCornerNumb = building->GetPolygon()->getNumPoints() - 1;
 		std::cout << "Corners number: " << buildingCornerNumb << std::endl;
 
@@ -106,72 +108,57 @@ void Program::Execute() {
 		std::shared_ptr<ImageProcesser> roofEdgeProcesser = ImageProcesserFactory::CreateEdgePipeline(br, SHOW_STEPS);
 		std::shared_ptr<ImageProcesser> ridgeEdgeProcesser = ImageProcesserFactory::CreateRidgePipeline(lm, SHOW_STEPS);
 
-		roofEdgeProcesser->Process(buildingCornerNumb);
-		std::vector<cv::Point2f> roofResult = roofEdgeProcesser->GetOutput();	// TODO: cambiare cv::Point2f
+		float safetyFactor = 1.2;
+		roofEdgeProcesser->Process(buildingCornerNumb*safetyFactor);
+		std::vector<MyPoint2> roofResult = roofEdgeProcesser->GetOutput();
 
 		ridgeEdgeProcesser->Process();
-		std::vector<cv::Point2f> ridgeResult = ridgeEdgeProcesser->GetOutput();	// TODO: cambiare cv::Point2f
+		std::vector<MyPoint2> ridgeResult = ridgeEdgeProcesser->GetOutput();
+
+		TriangleWrapper triWrap;
+		triWrap.Initialize();
+		triWrap.UploadPoints(roofResult, ridgeResult);
+		std::vector<MyTriangle2> triangles2 = triWrap.Triangulate();
+
+		std::vector<MyTriangle> triangles;
+		for (MyTriangle2 tri2 : triangles2) {
+			MyPoint p1 = grid.GetGridPointCoord(tri2.p1.x, tri2.p1.y);
+			MyPoint p2 = grid.GetGridPointCoord(tri2.p2.x, tri2.p2.y);
+			MyPoint p3 = grid.GetGridPointCoord(tri2.p3.x, tri2.p3.y);
+
+			triangles.push_back({ p1, p2, p3 });
+		}
+
+	
+		meshes.push_back(MyMesh(triangles));
 		
 
-		cv::Mat resImage = cv::Mat::zeros(cv::Size(br.size(), br[0].size()), CV_MAKETYPE(CV_8U, 3));
 
-		cv::Rect rect(0, 0, br.size(), br[0].size());
-		cv::Subdiv2D subdiv(rect);
-
-		for (size_t i = 0; i < roofResult.size(); i++) {
-			subdiv.insert(roofResult[i]);
-			if (SHOW_RESULT)
-				circle(resImage, roofResult[i], 0.1, cv::Scalar(0, 255, 0), 2); // BGR
-		}
-		for (size_t i = 0; i < ridgeResult.size(); i++) {
-			subdiv.insert(ridgeResult[i]);
-			if (SHOW_RESULT)
-				circle(resImage, ridgeResult[i], 0.1, cv::Scalar(255, 0, 0), 2); // BGR
-		}
-
-		std::vector<cv::Vec6f> triangleList;
-		subdiv.getTriangleList(triangleList);
-
-		cv::Scalar delaunay_color(128, 0, 128);
-
-		std::ofstream stlFile(OUTPUT_PATH "temp.stl");
-
-		stlFile.imbue(std::locale::classic());
-		stlFile << std::fixed << std::setprecision(3);
-		stlFile << "solid\n";
-
-		for (size_t i = 0; i < triangleList.size(); ++i) {
-			cv::Vec6f t = triangleList[i];
-			cv::Point pt0(cvRound(t[0]), cvRound(t[1]));
-			cv::Point pt1(cvRound(t[2]), cvRound(t[3]));
-			cv::Point pt2(cvRound(t[4]), cvRound(t[5]));
-
-			float c_x = (pt0.x + pt1.x + pt2.x) / 3.0;
-			float c_y = (pt0.y + pt1.y + pt2.y) / 3.0;
-
-			if (br[c_x][br[0].size()-c_y] != 0) {
-				if (SHOW_RESULT) {
-					cv::line(resImage, pt0, pt1, delaunay_color, 1);
-					cv::line(resImage, pt1, pt2, delaunay_color, 1);
-					cv::line(resImage, pt2, pt0, delaunay_color, 1);
-				}
-
-				MyPoint p0 = grid.GetGridPointCoord(pt0.x, pt0.y);
-				MyPoint p1 = grid.GetGridPointCoord(pt1.x, pt1.y);
-				MyPoint p2 = grid.GetGridPointCoord(pt2.x, pt2.y);
-
-				stlFile << "outer loop\n";
-				stlFile << "vertex " << p0.x << " " << p0.y << " " << p0.z << "\n";
-				stlFile << "vertex " << p1.x << " " << p1.y << " " << p1.z << "\n";
-				stlFile << "vertex " << p2.x << " " << p2.y << " " << p2.z << "\n";
-				stlFile << "endloop\n";
+		if (SHOW_RESULT) {
+			cv::Mat resImage = cv::Mat::zeros(cv::Size(br.size(), br[0].size()), CV_MAKETYPE(CV_8U, 3));
+			for (size_t i = 0; i < roofResult.size(); i++) {
+				cv::Point temp(static_cast<int>(std::round(roofResult[i].x)), static_cast<int>(std::round(roofResult[i].y)));
+				circle(resImage, temp, 0.1, cv::Scalar(0, 255, 0), 2); // BGR
 			}
-			
-		}
-		stlFile << "endsolid\n";
-		stlFile.close();
+			for (size_t i = 0; i < ridgeResult.size(); i++) {
+				cv::Point temp(static_cast<int>(std::round(ridgeResult[i].x)), static_cast<int>(std::round(ridgeResult[i].y)));
+				circle(resImage, temp, 0.1, cv::Scalar(255, 0, 0), 2); // BGR
+			}
+			cv::Scalar delaunay_color(128, 0, 128);
 
-		if (SHOW_RESULT)
+			for (const auto& triangle : triangles2) {
+				cv::Point pt1(triangle.p1.x, triangle.p1.y);
+				cv::Point pt2(triangle.p2.x, triangle.p2.y);
+				cv::Point pt3(triangle.p3.x, triangle.p3.y);
+
+				cv::line(resImage, pt1, pt2, delaunay_color, 1);
+				cv::line(resImage, pt2, pt3, delaunay_color, 1);
+				cv::line(resImage, pt3, pt1, delaunay_color, 1);
+			}
 			UtilsCV::Show(resImage);
+		}
 	}
+
+	Exporter::ExportStl(meshes, filePath);
+
 }

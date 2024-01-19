@@ -1,16 +1,16 @@
 #pragma once
+#define _CRT_SECURE_NO_WARNINGS
 
-extern "C" {
-	#include "triangle.h"
-}
 
 #include <iostream>
 #include <vector>
 #include "../MyPoint.h"
-
+extern "C" {
+	#include "triangle.h"
+}
+/*
 void report(triangulateio* io, int markers, int reporttriangles, int reportneighbors, int reportsegments,
-	int reportedges, int reportnorms)
-{
+	int reportedges, int reportnorms) {
 	int i, j;
 
 	for (i = 0; i < io->numberofpoints; i++) {
@@ -98,13 +98,14 @@ void report(triangulateio* io, int markers, int reporttriangles, int reportneigh
 		printf("\n");
 	}
 }
-
+*/
 typedef triangulateio TriangleIO;
 
 class TriangleWrapper {
 public:
 	TriangleWrapper();
 	~TriangleWrapper();
+	void Initialize();
 
 	void UploadPoints(const std::vector<MyPoint2>& constrainedPoints, const std::vector<MyPoint2>& other = {});
 	std::vector<MyTriangle2> Triangulate();
