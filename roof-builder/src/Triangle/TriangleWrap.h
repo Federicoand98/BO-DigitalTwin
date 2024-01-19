@@ -3,6 +3,9 @@
 extern "C" {
 	#include "triangle.h"
 }
+
+#include <iostream>
+#include <vector>
 #include "../MyPoint.h"
 
 void report(triangulateio* io, int markers, int reporttriangles, int reportneighbors, int reportsegments,
@@ -95,3 +98,22 @@ void report(triangulateio* io, int markers, int reporttriangles, int reportneigh
 		printf("\n");
 	}
 }
+
+typedef triangulateio TriangleIO;
+
+class TriangleWrapper {
+public:
+	TriangleWrapper();
+	~TriangleWrapper();
+
+	void UploadPoints(const std::vector<MyPoint2>& constrainedPoints, const std::vector<MyPoint2>& other = {});
+	std::vector<MyTriangle2> Triangulate();
+
+private:
+	void deallocateStructs();
+
+private:
+	TriangleIO m_In;
+	TriangleIO m_Out;
+	std::vector<MyTriangle2> m_Triangles;
+};
