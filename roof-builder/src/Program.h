@@ -119,15 +119,50 @@ void Program::Execute() {
 		triWrap.Initialize();
 		triWrap.UploadPoints(roofResult, ridgeResult);
 		std::vector<MyTriangle2> triangles2 = triWrap.Triangulate();
+		std::vector<std::vector<int>> indices = triWrap.GetIndices();
 
 		std::vector<MyTriangle> triangles;
-		for (MyTriangle2 tri2 : triangles2) {
-			MyPoint p1 = grid.GetGridPointCoord(tri2.p1.x, tri2.p1.y);
-			MyPoint p2 = grid.GetGridPointCoord(tri2.p2.x, tri2.p2.y);
-			MyPoint p3 = grid.GetGridPointCoord(tri2.p3.x, tri2.p3.y);
+		for (int i = 0; i < triangles2.size(); /* no increment here */) {
+			MyTriangle2 tri2 = triangles2[i];
+			float c_x = (tri2.p1.x + tri2.p2.x + tri2.p3.x) / 3.0;
+			float c_y = (tri2.p1.y + tri2.p2.y + tri2.p3.y) / 3.0;
 
-			triangles.push_back({ p1, p2, p3 });
+			if (br[c_x][br[0].size() - c_y] != 0) {
+				MyPoint p1 = grid.GetGridPointCoord(tri2.p1.x, tri2.p1.y);
+				MyPoint p2 = grid.GetGridPointCoord(tri2.p2.x, tri2.p2.y);
+				MyPoint p3 = grid.GetGridPointCoord(tri2.p3.x, tri2.p3.y);
+
+				triangles.push_back({ p1, p2, p3 });
+
+				++i; // only increment if we didn't erase
+			}
+			else {
+				// remove this entry from triangles2
+				triangles2.erase(triangles2.begin() + i);
+				indices.erase(indices.begin() + i);
+			}
 		}
+
+		std::map<std::pair<int, int>, int> edgeFrequency;
+
+		for (const auto& triangle : indices) {
+			for (int i = 0; i < 3; ++i) {
+				// need to order the vertices
+				std::pair<int, int> edge = std::minmax(triangle[i], triangle[(i + 1) % 3]);
+				// increment frequency
+				edgeFrequency[edge]++;
+			}
+		}
+
+		std::vector<std::pair<int, int>> externalEdges;
+
+		for (const auto& item : edgeFrequency) {
+			if (item.second == 1) {
+				externalEdges.push_back(item.first);
+			}
+		}
+
+		std::cout << "number of ext edges: " << externalEdges.size() << std::endl;
 
 	
 		meshes.push_back(MyMesh(triangles));
