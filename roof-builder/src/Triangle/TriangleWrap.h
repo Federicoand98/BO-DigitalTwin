@@ -109,7 +109,9 @@ public:
 
 	void UploadPoints(const std::vector<MyPoint2>& constrainedPoints, const std::vector<MyPoint2>& other = {});
 	std::vector<MyTriangle2> Triangulate();
+	std::vector<MyTriangle2> TriangulateConstrained();
 
+	std::vector<std::vector<int>> GetIndices() { return m_Indices; };
 private:
 	void deallocateStructs();
 
@@ -117,4 +119,5 @@ private:
 	TriangleIO m_In;
 	TriangleIO m_Out;
 	std::vector<MyTriangle2> m_Triangles;
+	std::vector<std::vector<int>> m_Indices;
 };

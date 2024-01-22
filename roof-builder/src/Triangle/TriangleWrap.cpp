@@ -64,6 +64,33 @@ void TriangleWrapper::UploadPoints(const std::vector<MyPoint2>& constrainedPoint
 }
 
 std::vector<MyTriangle2> TriangleWrapper::Triangulate() {
+	char cmd[] = "z";
+	triangulate(cmd, &m_In, &m_Out, (struct triangulateio*)NULL);
+
+	std::vector<MyTriangle2> triangles;
+
+	for (int i = 0; i < m_Out.numberoftriangles; i++) {
+		int v1 = m_Out.trianglelist[i * 3];
+		int v2 = m_Out.trianglelist[i * 3 + 1];
+		int v3 = m_Out.trianglelist[i * 3 + 2];
+
+		float ax = m_Out.pointlist[2 * v1];
+		float ay = m_Out.pointlist[2 * v1 + 1];
+		float bx = m_Out.pointlist[2 * v2];
+		float by = m_Out.pointlist[2 * v2 + 1];
+		float cx = m_Out.pointlist[2 * v3];
+		float cy = m_Out.pointlist[2 * v3 + 1];
+
+		m_Indices.push_back({ v1, v2, v3 });
+		triangles.push_back({ {ax, ay}, {bx, by}, {cx, cy} });
+	}
+
+	deallocateStructs();
+
+	return triangles;
+}
+
+std::vector<MyTriangle2> TriangleWrapper::TriangulateConstrained() {
 	char cmd[] = "pz";
 	triangulate(cmd, &m_In, &m_Out, (struct triangulateio*)NULL);
 
@@ -81,6 +108,7 @@ std::vector<MyTriangle2> TriangleWrapper::Triangulate() {
 		float cx = m_Out.pointlist[2 * v3];
 		float cy = m_Out.pointlist[2 * v3 + 1];
 
+		m_Indices.push_back({ v1, v2, v3 });
 		triangles.push_back({ {ax, ay}, {bx, by}, {cx, cy} });
 	}
 
