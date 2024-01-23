@@ -21,89 +21,48 @@
 
 #define SHOW_RESULT false
 #define SHOW_STEPS false
+#define SHOW_CLEAN_EDGES true
 
 
-int findPrimaryVert(std::vector<std::pair<int, int>>& v, int num, int t) {
+int findPrimaryVert(std::list<std::pair<int, int>>& v, int num, int t) {
 	int pos = num;
 	bool found = false;
 
-	for (int i = 0; !found; /* no increment here */) {
+	for (auto it = v.begin(); !found; /* no increment here */) {
 		//std::cout << "searching " << pos << std::endl;
-		//std::cout << "current: " << v[i].first << " - " << v[i].second << std::endl;
-		if (v[i].first == pos) {
-			//std::cout << "found " << pos << " with " << v[i].second << std::endl;
-			pos = v[i].second;
+		//std::cout << "current: " << it->first << " - " << it->second << std::endl;
+		if (it->first == pos) {
+			//std::cout << "found " << pos << " with " << it->second << std::endl;
+			pos = it->second;
 
 			// remove this entry from v
-			v.erase(v.begin() + i);
+			it = v.erase(it);
 			if (pos < t) {
 				found = true;
 				return pos;
 			}
 		}
-		else if (v[i].second == pos) {
-			//std::cout << "found " << pos << " with " << v[i].first << std::endl;
-			pos = v[i].first;
+		else if (it->second == pos) {
+			//std::cout << "found " << pos << " with " << it->first << std::endl;
+			pos = it->first;
 
 			// remove this entry from v
-			v.erase(v.begin() + i);
+			it = v.erase(it);
 			if (pos < t) {
 				found = true;
 				return pos;
 			}
 		}
 		else {
-			++i; // only increment if we didn't erase
+			++it; // only increment if we didn't erase
 		}
 
-		if (i >= v.size()) {
-			i = 0;
+		if (it == v.end()) {
+			it = v.begin();
 		}
 	}
 
 	return -1;
-}
-
-
-void DFS(std::vector<std::pair<int, int>>& edges, int start, int end) {
-	std::stack<int> stack;
-	std::map<int, bool> visited;
-	std::map<int, int> parent;
-
-	stack.push(start);
-	visited[start] = true;
-
-	while (!stack.empty()) {
-		int node = stack.top();
-		stack.pop();
-
-		if (node < end) {
-			// Print path
-			std::vector<int> path;
-			for (int v = node; v != -1; v = parent[v]) {
-				path.push_back(v);
-			}
-			for (auto it = path.rbegin(); it != path.rend(); ++it) {
-				std::cout << *it << " ";
-			}
-			std::cout << "\n";
-			return;
-		}
-
-		if (!visited[node]) {
-			visited[node] = true;
-			for (const auto& edge : edges) {
-				if (edge.first == node && edge.second != parent[node]) {
-					stack.push(edge.second);
-					parent[edge.second] = node;
-				}
-				else if (edge.second == node && edge.first != parent[node]) {
-					stack.push(edge.first);
-					parent[edge.first] = node;
-				}
-			}
-		}
-	}
 }
 
 class Program {
@@ -233,7 +192,7 @@ void Program::Execute() {
 			}
 		}
 
-		std::vector<std::pair<int, int>> externalEdges;
+		std::list<std::pair<int, int>> externalEdges;
 
 		for (const auto& item : edgeFrequency) {
 			if (item.second == 1) {
@@ -243,39 +202,62 @@ void Program::Execute() {
 
 		std::cout << "number of ext edges: " << externalEdges.size() << std::endl;
 
-		//std::sort(externalEdges.begin(), externalEdges.end());
-
 		int precisionVal = buildingCornerNumb * 1.2;
 
 		std::cout << "prec val: " << precisionVal << std::endl;
+
 		
 		for (const auto& edge : externalEdges) {
 			std::cout << "edge: " << edge.first << " - " << edge.second << std::endl;
 		}
+		
 
-		std::vector<std::pair<int, int>> cleanEdges;
-		std::map<int, std::vector<int>> edgeTree;
+		std::list<std::pair<int, int>> cleanEdges;
 
 		std::cout << "edges before: " << externalEdges.size() << std::endl;
 
-		for (const auto& edge : externalEdges) {
-			int curr = edge.first;
+		for (auto it = externalEdges.begin(); it != externalEdges.end(); /* no increment here */) {
+			int curr = it->first;
 			if (curr < precisionVal) {
-				if (edge.second < precisionVal) {
-					cleanEdges.push_back(edge);
+				if (it->second < precisionVal) {
+					cleanEdges.push_back(*it);
+					it = externalEdges.erase(it);  // delete this entry from external edges and move to next
 				}
 				else {
 					int temp = findPrimaryVert(externalEdges, curr, precisionVal);
 					if (temp > 0 && temp != curr) {
 						cleanEdges.push_back({ curr, temp });
 					}
+					++it;
+					std::cout << "####################### edge found #######################" << std::endl;
 				}
+			}
+			else {
+				++it;  // only increment here
 			}
 		}
 		std::cout << "edges after: " << externalEdges.size() << std::endl;
 
 		for (const auto& edge : cleanEdges) {
 			std::cout << "edge: " << edge.first << " - " << edge.second << std::endl;
+		}
+
+		if (SHOW_CLEAN_EDGES) {
+			cv::Mat resImage = cv::Mat::zeros(cv::Size(br.size(), br[0].size()), CV_MAKETYPE(CV_8U, 3));
+			for (size_t i = 0; i < roofResult.size(); i++) {
+				cv::Point temp(static_cast<int>(std::round(roofResult[i].x)), static_cast<int>(std::round(roofResult[i].y)));
+				circle(resImage, temp, 0.1, cv::Scalar(0, 255, 0), 2); // BGR
+			}
+			
+			cv::Scalar delaunay_color(128, 0, 128);
+
+			for (const auto& edge : cleanEdges) {
+				cv::Point pt1(roofResult[edge.first].x, roofResult[edge.first].y);
+				cv::Point pt2(roofResult[edge.second].x, roofResult[edge.second].y);
+
+				cv::line(resImage, pt1, pt2, delaunay_color, 1);
+			}
+			UtilsCV::Show(resImage);
 		}
 
 		std::vector<std::vector<float>> lm = grid.GetLocalMax(11);
