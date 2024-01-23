@@ -20,7 +20,25 @@
 #include "Exporter.h"
 
 #define SHOW_RESULT true
-#define SHOW_STEPS false
+#define SHOW_STEPS true
+
+/*
+int findPrimaryVert(std::vector<std::pair<int, int>>& v, int num, int t, int origin) {
+	for (size_t ind = 0; ind < v.size(); ++ind) {
+		auto& c = v[ind];
+
+		if (c.first == num && c.second < t && ) {
+			return c.second;
+		} else return findPrimaryVert(v, c.second, t);
+
+		if (c.second == num && c.first < t) {
+			return c.first;
+		} else return findPrimaryVert(v, c.first, t);
+	}
+
+	return -1;
+}
+*/
 
 class Program {
 public:
@@ -103,21 +121,16 @@ void Program::Execute() {
 		targetPoints.clear();
 
 		std::vector<std::vector<float>> br = grid.GetBooleanRoof();
-		std::vector<std::vector<float>> lm = grid.GetLocalMax(11);
 
 		std::shared_ptr<ImageProcesser> roofEdgeProcesser = ImageProcesserFactory::CreateEdgePipeline(br, SHOW_STEPS);
-		std::shared_ptr<ImageProcesser> ridgeEdgeProcesser = ImageProcesserFactory::CreateRidgePipeline(lm, SHOW_STEPS);
 
-		float safetyFactor = 1.2;
+		float safetyFactor = 3.0;
 		roofEdgeProcesser->Process(buildingCornerNumb*safetyFactor);
 		std::vector<MyPoint2> roofResult = roofEdgeProcesser->GetOutput();
 
-		ridgeEdgeProcesser->Process();
-		std::vector<MyPoint2> ridgeResult = ridgeEdgeProcesser->GetOutput();
-
 		TriangleWrapper triWrap;
 		triWrap.Initialize();
-		triWrap.UploadPoints(roofResult, ridgeResult);
+		triWrap.UploadPoints(roofResult);
 		std::vector<MyTriangle2> triangles2 = triWrap.Triangulate();
 		std::vector<std::vector<int>> indices = triWrap.GetIndices();
 
@@ -164,10 +177,36 @@ void Program::Execute() {
 
 		std::cout << "number of ext edges: " << externalEdges.size() << std::endl;
 
-	
-		meshes.push_back(MyMesh(triangles));
-		
+		//std::sort(externalEdges.begin(), externalEdges.end());
 
+		int precisionVal = buildingCornerNumb * 1.2;
+
+		std::cout << "prec val: " << precisionVal << std::endl;
+		
+		for (const auto& edge : externalEdges) {
+			std::cout << "edge: " << edge.first << " - " << edge.second << std::endl;
+		}
+
+		std::vector<std::pair<int, int>> cleanEdges;
+
+		for (const auto& edge : externalEdges) {
+			if (edge.first < precisionVal) {
+				if (edge.second < precisionVal) {
+					cleanEdges.push_back(edge);
+				}
+				else {
+					// int temp = findPrimaryVert()
+					// itera su external edges finchè non trovi un valore
+				}
+			}
+		}
+
+		std::vector<std::vector<float>> lm = grid.GetLocalMax(11);
+		std::shared_ptr<ImageProcesser> ridgeEdgeProcesser = ImageProcesserFactory::CreateRidgePipeline(lm, SHOW_STEPS);
+		ridgeEdgeProcesser->Process();
+		std::vector<MyPoint2> ridgeResult = ridgeEdgeProcesser->GetOutput();
+
+		meshes.push_back(MyMesh(triangles));
 
 		if (SHOW_RESULT) {
 			cv::Mat resImage = cv::Mat::zeros(cv::Size(br.size(), br[0].size()), CV_MAKETYPE(CV_8U, 3));
