@@ -19,26 +19,92 @@
 #include "Triangle/TriangleWrap.h"
 #include "Exporter.h"
 
-#define SHOW_RESULT true
-#define SHOW_STEPS true
+#define SHOW_RESULT false
+#define SHOW_STEPS false
 
-/*
-int findPrimaryVert(std::vector<std::pair<int, int>>& v, int num, int t, int origin) {
-	for (size_t ind = 0; ind < v.size(); ++ind) {
-		auto& c = v[ind];
 
-		if (c.first == num && c.second < t && ) {
-			return c.second;
-		} else return findPrimaryVert(v, c.second, t);
+int findPrimaryVert(std::vector<std::pair<int, int>>& v, int num, int t) {
+	int pos = num;
+	bool found = false;
 
-		if (c.second == num && c.first < t) {
-			return c.first;
-		} else return findPrimaryVert(v, c.first, t);
+	for (int i = 0; !found; /* no increment here */) {
+		//std::cout << "searching " << pos << std::endl;
+		//std::cout << "current: " << v[i].first << " - " << v[i].second << std::endl;
+		if (v[i].first == pos) {
+			//std::cout << "found " << pos << " with " << v[i].second << std::endl;
+			pos = v[i].second;
+
+			// remove this entry from v
+			v.erase(v.begin() + i);
+			if (pos < t) {
+				found = true;
+				return pos;
+			}
+		}
+		else if (v[i].second == pos) {
+			//std::cout << "found " << pos << " with " << v[i].first << std::endl;
+			pos = v[i].first;
+
+			// remove this entry from v
+			v.erase(v.begin() + i);
+			if (pos < t) {
+				found = true;
+				return pos;
+			}
+		}
+		else {
+			++i; // only increment if we didn't erase
+		}
+
+		if (i >= v.size()) {
+			i = 0;
+		}
 	}
 
 	return -1;
 }
-*/
+
+
+void DFS(std::vector<std::pair<int, int>>& edges, int start, int end) {
+	std::stack<int> stack;
+	std::map<int, bool> visited;
+	std::map<int, int> parent;
+
+	stack.push(start);
+	visited[start] = true;
+
+	while (!stack.empty()) {
+		int node = stack.top();
+		stack.pop();
+
+		if (node < end) {
+			// Print path
+			std::vector<int> path;
+			for (int v = node; v != -1; v = parent[v]) {
+				path.push_back(v);
+			}
+			for (auto it = path.rbegin(); it != path.rend(); ++it) {
+				std::cout << *it << " ";
+			}
+			std::cout << "\n";
+			return;
+		}
+
+		if (!visited[node]) {
+			visited[node] = true;
+			for (const auto& edge : edges) {
+				if (edge.first == node && edge.second != parent[node]) {
+					stack.push(edge.second);
+					parent[edge.second] = node;
+				}
+				else if (edge.second == node && edge.first != parent[node]) {
+					stack.push(edge.first);
+					parent[edge.first] = node;
+				}
+			}
+		}
+	}
+}
 
 class Program {
 public:
@@ -188,17 +254,28 @@ void Program::Execute() {
 		}
 
 		std::vector<std::pair<int, int>> cleanEdges;
+		std::map<int, std::vector<int>> edgeTree;
+
+		std::cout << "edges before: " << externalEdges.size() << std::endl;
 
 		for (const auto& edge : externalEdges) {
-			if (edge.first < precisionVal) {
+			int curr = edge.first;
+			if (curr < precisionVal) {
 				if (edge.second < precisionVal) {
 					cleanEdges.push_back(edge);
 				}
 				else {
-					// int temp = findPrimaryVert()
-					// itera su external edges finchè non trovi un valore
+					int temp = findPrimaryVert(externalEdges, curr, precisionVal);
+					if (temp > 0 && temp != curr) {
+						cleanEdges.push_back({ curr, temp });
+					}
 				}
 			}
+		}
+		std::cout << "edges after: " << externalEdges.size() << std::endl;
+
+		for (const auto& edge : cleanEdges) {
+			std::cout << "edge: " << edge.first << " - " << edge.second << std::endl;
 		}
 
 		std::vector<std::vector<float>> lm = grid.GetLocalMax(11);
