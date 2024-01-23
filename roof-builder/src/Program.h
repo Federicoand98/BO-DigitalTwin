@@ -28,7 +28,7 @@ int findPrimaryVert(std::list<std::pair<int, int>>& v, int num, int t) {
 	int pos = num;
 	bool found = false;
 
-	for (auto it = v.begin(); !found; /* no increment here */) {
+	for (auto it = v.begin(); !found && it != v.end(); /* no increment here */) {
 		//std::cout << "searching " << pos << std::endl;
 		//std::cout << "current: " << it->first << " - " << it->second << std::endl;
 		if (it->first == pos) {
@@ -206,17 +206,17 @@ void Program::Execute() {
 
 		std::cout << "prec val: " << precisionVal << std::endl;
 
-		
+		/*
 		for (const auto& edge : externalEdges) {
 			std::cout << "edge: " << edge.first << " - " << edge.second << std::endl;
 		}
-		
+		*/
 
 		std::list<std::pair<int, int>> cleanEdges;
 
 		std::cout << "edges before: " << externalEdges.size() << std::endl;
 
-		for (auto it = externalEdges.begin(); it != externalEdges.end(); /* no increment here */) {
+		for (auto it = externalEdges.begin(); it != externalEdges.end(); ) { // no increment here
 			int curr = it->first;
 			if (curr < precisionVal) {
 				if (it->second < precisionVal) {
@@ -229,7 +229,6 @@ void Program::Execute() {
 						cleanEdges.push_back({ curr, temp });
 					}
 					++it;
-					std::cout << "####################### edge found #######################" << std::endl;
 				}
 			}
 			else {
