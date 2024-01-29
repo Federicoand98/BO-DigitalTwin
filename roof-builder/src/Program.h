@@ -19,10 +19,9 @@
 #include "Triangle/TriangleWrap.h"
 #include "Exporter.h"
 
-#define SHOW_RESULT true
-#define SHOW_STEPS true
-#define SHOW_CLEAN_EDGES true
-
+#define SHOW_RESULT false
+#define SHOW_STEPS false
+#define SHOW_CLEAN_EDGES false
 
 int findPrimaryVert(std::list<std::pair<int, int>>& v, int num, int t) {
 	int pos = num;
@@ -89,11 +88,15 @@ int findNextVert(std::list<std::pair<int, int>>& v, int num) {
 
 std::vector<std::pair<int, int>> polygonize(std::list<std::pair<int, int>>& list) {
 	std::vector<std::pair<int, int>> res;
-	int temp = list.front().first;
+	int init = list.front().first;
+	int temp = init;
 	while (!list.empty()) { // no increment here
 		int sec = findNextVert(list, temp);
 		res.push_back({ temp, sec });
 		temp = sec;
+		if (sec == init) { // there are some dirty edges
+			return res;
+		}
 	}
 
 	return res;
@@ -124,7 +127,7 @@ void Program::Execute() {
 
 	//uint16_t select = 52578;
 	//uint16_t select = 24069;
-	uint16_t select = 51939;
+	uint16_t select = 14066;
 	std::string selectLas = "32_684000_4930000.las";
 
 	ReaderCsv readerCsv;
@@ -134,15 +137,17 @@ void Program::Execute() {
 
 	std::vector<std::shared_ptr<Building>> buildings;
 	std::vector<MyPoint> targetPoints;
-
+	
+	/*
 	for (std::string line : lines) {
 		std::shared_ptr<Building> building = BuildingFactory::CreateBuilding(line);
 		if (building->GetCodiceOggetto() == select) {
 			buildings.push_back(building);
 		}
 	}
+	*/
 
-	/*
+	
 	for (std::string line : lines) {
 		std::shared_ptr<Building> building = BuildingFactory::CreateBuilding(line);
 		
@@ -152,13 +157,18 @@ void Program::Execute() {
 			buildings.push_back(building);
 		}
 	}
-	*/
+
 	readerCsv.Flush();
 	std::vector<MyMesh> meshes;
 	std::string filePath(OUTPUT_PATH "temp.stl");
+	int c = 0;
 
 	// TODO: possibile filtro sugli edifici che appartengono a determinati tile
 	for (std::shared_ptr<Building> building : buildings) {
+		std::cout << "Edificio: " << c << "/" << buildings.size() << std::endl;
+		c++;
+
+		std::cout << "##### Cod. Oggetto: " << building->GetCodiceOggetto() << std::endl;
 		int buildingCornerNumb = building->GetPolygon()->getNumPoints() - 1;
 		std::cout << "Corners number: " << buildingCornerNumb << std::endl;
 
@@ -184,6 +194,8 @@ void Program::Execute() {
 			points->clear();
 			readerLas.Flush();
 		}
+		if (targetPoints.size() == 0)
+			continue;
 
 		std::vector<MyPoint> mainCluster = Dbscan::GetMainCluster(std::span(targetPoints), 0.8, 10);
 
@@ -212,7 +224,8 @@ void Program::Execute() {
 			float c_x = (tri2.p1.x + tri2.p2.x + tri2.p3.x) / 3.0;
 			float c_y = (tri2.p1.y + tri2.p2.y + tri2.p3.y) / 3.0;
 
-			if (br[c_x][br[0].size() - c_y] != 0) {
+			cv::Mat cFill = roofEdgeProcesser->GetCFill();
+			if (cFill.at<uchar>(c_y, c_x) != 0) {
 				MyPoint p1 = grid.GetGridPointCoord(tri2.p1.x, tri2.p1.y);
 				MyPoint p2 = grid.GetGridPointCoord(tri2.p2.x, tri2.p2.y);
 				MyPoint p3 = grid.GetGridPointCoord(tri2.p3.x, tri2.p3.y);
@@ -268,7 +281,9 @@ void Program::Execute() {
 			UtilsCV::Show(resImage);
 		}
 
-		int precisionVal = buildingCornerNumb * 1.2;
+		int precisionVal = buildingCornerNumb * 1.8;
+		if (precisionVal > externalEdges.size())
+			precisionVal = externalEdges.size();
 
 		std::cout << "prec val: " << precisionVal << std::endl;
 

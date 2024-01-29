@@ -210,6 +210,30 @@ public:
         }
     }
 
+    cv::Mat GetImage() { return m_Image; }
+
+    cv::Mat GetCFill() {
+        cv::Mat res = cv::Mat::zeros(m_Image.size(), CV_8U);
+        std::vector<std::vector<cv::Point>> contours;
+        cv::findContours(m_Image, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+        double maxArea = 0;
+        int maxAreaInd = -1;
+
+        for (size_t i = 0; i < contours.size(); ++i) {
+            double area = cv::contourArea(contours[i]);
+            if (area > maxArea) {
+                maxArea = area;
+                maxAreaInd = static_cast<int>(i);
+            }
+        }
+
+        if (maxAreaInd != -1) {
+            cv::drawContours(res, contours, maxAreaInd, 255.0, cv::FILLED);
+        }
+        return res;
+    }
+
     std::vector<MyPoint2> GetOutput() {
         std::vector<MyPoint2> myPoints;
         for (const auto& point : m_ResultPoint) {
