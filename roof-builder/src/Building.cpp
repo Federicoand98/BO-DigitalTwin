@@ -26,10 +26,10 @@ std::shared_ptr<Building> BuildingFactory::CreateBuilding(const std::string& ent
 			polygon = getPolygon(points);
 		}
 		else if(i == 3) {
-			tiles = getTiles(token);
+			tolleranza = std::stof(token);
 		}
 		else {
-			tolleranza = std::stof(token);
+			tiles = getTiles(token);
 		}
 
 		i++;
