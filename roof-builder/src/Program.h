@@ -19,9 +19,9 @@
 #include "Triangle/TriangleWrap.h"
 #include "Exporter.h"
 
-#define SHOW_RESULT false
+#define SHOW_RESULT true
 #define SHOW_STEPS false
-#define SHOW_CLEAN_EDGES true
+#define SHOW_CLEAN_EDGES false
 
 
 int findPrimaryVert(std::list<std::pair<int, int>>& v, int num, int t) {
@@ -29,10 +29,10 @@ int findPrimaryVert(std::list<std::pair<int, int>>& v, int num, int t) {
 	bool found = false;
 
 	for (auto it = v.begin(); !found && it != v.end(); /* no increment here */) {
-		std::cout << "searching " << pos << std::endl;
-		std::cout << "current: " << it->first << " - " << it->second << std::endl;
+		//std::cout << "searching " << pos << std::endl;
+		//std::cout << "current: " << it->first << " - " << it->second << std::endl;
 		if (it->first == pos) {
-			std::cout << "found " << pos << " with " << it->second << std::endl;
+			//std::cout << "found " << pos << " with " << it->second << std::endl;
 			pos = it->second;
 
 			// remove this entry from v
@@ -43,7 +43,7 @@ int findPrimaryVert(std::list<std::pair<int, int>>& v, int num, int t) {
 			}
 		}
 		else if (it->second == pos) {
-			std::cout << "found " << pos << " with " << it->first << std::endl;
+			//std::cout << "found " << pos << " with " << it->first << std::endl;
 			pos = it->first;
 
 			// remove this entry from v
@@ -63,6 +63,40 @@ int findPrimaryVert(std::list<std::pair<int, int>>& v, int num, int t) {
 	}
 
 	return -1;
+}
+
+int findNextVert(std::list<std::pair<int, int>>& v, int num) {
+	for (auto it = v.begin(); it != v.end(); /* no increment here */) {
+		//std::cout << "searching " << num << std::endl;
+		//std::cout << "current: " << it->first << " - " << it->second << std::endl;
+		if (it->first == num) {
+			int temp = it->second;
+			v.erase(it);
+			return temp;
+		}
+		else if (it->second == num) {
+			int temp = it->first;
+			it = v.erase(it);
+			return temp;	
+		}
+		else {
+			++it; // only increment if we didn't erase
+		}
+	}
+
+	return -1;
+}
+
+std::vector<std::pair<int, int>> polygonize(std::list<std::pair<int, int>>& list) {
+	std::vector<std::pair<int, int>> res;
+	int temp = list.front().first;
+	while (!list.empty()) { // no increment here
+		int sec = findNextVert(list, temp);
+		res.push_back({ temp, sec });
+		temp = sec;
+	}
+
+	return res;
 }
 
 class Program {
@@ -156,12 +190,12 @@ void Program::Execute() {
 		TriangleWrapper triWrap;
 		triWrap.Initialize();
 		triWrap.UploadPoints(roofResult);
-		std::vector<MyTriangle2> triangles2 = triWrap.Triangulate();
+		std::vector<MyTriangle2> tris2 = triWrap.Triangulate();
 		std::vector<std::vector<int>> indices = triWrap.GetIndices();
 
-		std::vector<MyTriangle> triangles;
-		for (int i = 0; i < triangles2.size(); /* no increment here */) {
-			MyTriangle2 tri2 = triangles2[i];
+		std::vector<MyTriangle> tempTris;
+		for (int i = 0; i < tris2.size(); /* no increment here */) {
+			MyTriangle2 tri2 = tris2[i];
 			float c_x = (tri2.p1.x + tri2.p2.x + tri2.p3.x) / 3.0;
 			float c_y = (tri2.p1.y + tri2.p2.y + tri2.p3.y) / 3.0;
 
@@ -170,13 +204,13 @@ void Program::Execute() {
 				MyPoint p2 = grid.GetGridPointCoord(tri2.p2.x, tri2.p2.y);
 				MyPoint p3 = grid.GetGridPointCoord(tri2.p3.x, tri2.p3.y);
 
-				triangles.push_back({ p1, p2, p3 });
+				tempTris.push_back({ p1, p2, p3 });
 
 				++i; // only increment if we didn't erase
 			}
 			else {
-				// remove this entry from triangles2
-				triangles2.erase(triangles2.begin() + i);
+				// remove this entry from tris2
+				tris2.erase(tris2.begin() + i);
 				indices.erase(indices.begin() + i);
 			}
 		}
@@ -202,7 +236,8 @@ void Program::Execute() {
 
 		std::cout << "number of ext edges: " << externalEdges.size() << std::endl;
 
-		if (true) {
+		
+		if (SHOW_CLEAN_EDGES) {
 			cv::Mat resImage = cv::Mat::zeros(cv::Size(br.size(), br[0].size()), CV_MAKETYPE(CV_8U, 3));
 			for (size_t i = 0; i < roofResult.size(); i++) {
 				cv::Point temp(static_cast<int>(std::round(roofResult[i].x)), static_cast<int>(std::round(roofResult[i].y)));
@@ -224,40 +259,41 @@ void Program::Execute() {
 
 		std::cout << "prec val: " << precisionVal << std::endl;
 
-		
+		/*
 		for (const auto& edge : externalEdges) {
 			std::cout << "edge: " << edge.first << " - " << edge.second << std::endl;
 		}
-		
+		*/
 
 		std::list<std::pair<int, int>> cleanEdges;
 
-		std::cout << "edges before: " << externalEdges.size() << std::endl;
+		//std::cout << "edges before: " << externalEdges.size() << std::endl;
 
-		for (auto it = externalEdges.begin(); it != externalEdges.end(); ) { // no increment here
-			int curr = it->first;
-			if (curr < precisionVal) {
-				if (it->second < precisionVal) {
-					cleanEdges.push_back(*it);
-					it = externalEdges.erase(it);  // delete this entry from external edges and move to next
+		while (!externalEdges.empty()) { // no increment here
+			auto curr = externalEdges.begin();
+			if (curr->first < precisionVal) {
+				if (curr->second < precisionVal) {
+					cleanEdges.push_back(*curr);
+					externalEdges.erase(curr);  // delete this entry from external edges and move to next
 				}
 				else {
-					int temp = findPrimaryVert(externalEdges, curr, precisionVal);
-					if (temp > 0 && temp != curr) {
-						cleanEdges.push_back({ curr, temp });
+					int temp = findPrimaryVert(externalEdges, curr->first, precisionVal);
+					if (temp > 0 && temp != curr->first) {
+						cleanEdges.push_back({ curr->first, temp });
 					}
-					++it;
 				}
 			}
 			else {
-				++it;  // only increment here
+				break;
 			}
 		}
+		/*
 		std::cout << "edges after: " << externalEdges.size() << std::endl;
 
 		for (const auto& edge : cleanEdges) {
 			std::cout << "edge: " << edge.first << " - " << edge.second << std::endl;
 		}
+		*/
 
 		if (SHOW_CLEAN_EDGES) {
 			cv::Mat resImage = cv::Mat::zeros(cv::Size(br.size(), br[0].size()), CV_MAKETYPE(CV_8U, 3));
@@ -277,10 +313,41 @@ void Program::Execute() {
 			UtilsCV::Show(resImage);
 		}
 
+		roofResult.erase(roofResult.begin() + precisionVal, roofResult.end());
+
 		std::vector<std::vector<float>> lm = grid.GetLocalMax(11);
 		std::shared_ptr<ImageProcesser> ridgeEdgeProcesser = ImageProcesserFactory::CreateRidgePipeline(lm, SHOW_STEPS);
 		ridgeEdgeProcesser->Process();
 		std::vector<MyPoint2> ridgeResult = ridgeEdgeProcesser->GetOutput();
+
+		std::vector<std::pair<int, int>> outEdge = polygonize(cleanEdges);
+		std::cout << "odge: " << outEdge.size() << std::endl;
+
+		triWrap.Initialize();
+		std::cout << "inite: done" << std::endl;
+		triWrap.UploadPoints(roofResult, ridgeResult, outEdge);
+		std::cout << "uplode: done" << std::endl;
+		std::vector<MyTriangle2> triangles2 = triWrap.TriangulateConstrained();
+
+		std::vector<MyTriangle> triangles;
+		for (int i = 0; i < triangles2.size(); /* no increment here */) {
+			MyTriangle2 tri2 = triangles2[i];
+			float c_x = (tri2.p1.x + tri2.p2.x + tri2.p3.x) / 3.0;
+			float c_y = (tri2.p1.y + tri2.p2.y + tri2.p3.y) / 3.0;
+
+			if (br[c_x][br[0].size() - c_y] != 0) {
+				MyPoint p1 = grid.GetGridPointCoord(tri2.p1.x, tri2.p1.y);
+				MyPoint p2 = grid.GetGridPointCoord(tri2.p2.x, tri2.p2.y);
+				MyPoint p3 = grid.GetGridPointCoord(tri2.p3.x, tri2.p3.y);
+
+				triangles.push_back({ p1, p2, p3 });
+
+				++i; // only increment if we didn't erase
+			}
+			else {
+				triangles2.erase(triangles2.begin() + i);
+			}
+		}
 
 		meshes.push_back(MyMesh(triangles));
 

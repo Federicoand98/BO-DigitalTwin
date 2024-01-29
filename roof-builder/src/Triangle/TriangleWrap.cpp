@@ -17,9 +17,9 @@ void TriangleWrapper::Initialize() {
 	m_Out.edgemarkerlist = (int*)NULL;
 }
 
-void TriangleWrapper::UploadPoints(const std::vector<MyPoint2>& constrainedPoints, const std::vector<MyPoint2>& other) {
-	m_In.numberofpoints = constrainedPoints.size() + other.size();
-	m_In.numberofsegments = constrainedPoints.size();
+void TriangleWrapper::UploadPoints(const std::vector<MyPoint2>& points, const std::vector<MyPoint2>& other, const std::vector<std::pair<int, int>>& constrainedIndexes) {
+	m_In.numberofpoints = points.size() + other.size();
+
 	m_In.numberofpointattributes = 0;
 	m_In.numberofholes = 0;
 	m_In.numberofregions = 0;
@@ -27,39 +27,42 @@ void TriangleWrapper::UploadPoints(const std::vector<MyPoint2>& constrainedPoint
 	m_In.pointattributelist = (REAL*)NULL;
 	m_In.pointlist = (REAL*)malloc(m_In.numberofpoints * 2 * sizeof(REAL));
 	m_In.pointmarkerlist = (int*)malloc(m_In.numberofpoints * sizeof(int));
-	m_In.segmentlist = (int*)malloc(m_In.numberofsegments * 2 * sizeof(int));
-	m_In.segmentmarkerlist = (int*)malloc(m_In.numberofsegments * 2 * sizeof(int));
 
 	// Upload constrained Points
-	for (int i = 0; i < constrainedPoints.size(); i++) {
-		m_In.pointlist[i * 2] = constrainedPoints.at(i).x;
-		m_In.pointlist[i * 2 + 1] = constrainedPoints.at(i).y;
+	for (int i = 0; i < points.size(); i++) {
+		m_In.pointlist[i * 2] = points.at(i).x;
+		m_In.pointlist[i * 2 + 1] = points.at(i).y;
 	}
 
 	// Upload interior Points
-	for (int i = constrainedPoints.size(), j = 0; i < m_In.numberofpoints; i++, j++) {
+	for (int i = points.size(), j = 0; i < m_In.numberofpoints; i++, j++) {
 		m_In.pointlist[i * 2] = other.at(j).x;
 		m_In.pointlist[i * 2 + 1] = other.at(j).y;
 	}
 
 
 	// Define markers
-	for (int i = 0; i < constrainedPoints.size(); i++)
+	for (int i = 0; i < points.size(); i++)
 		m_In.pointmarkerlist[i] = 2;
 
-	for (int i = constrainedPoints.size(); i < m_In.numberofpoints; i++)
+	for (int i = points.size(); i < m_In.numberofpoints; i++)
 		m_In.pointmarkerlist[i] = 3;
 
-	// Upload segments for outer border (constraints)
-	for (int i = 1; i <= m_In.numberofsegments * 2; i++) {
-		if (i == m_In.numberofsegments * 2)
-			m_In.segmentlist[i - 1] = 0;
-		else
-			m_In.segmentlist[i - 1] = i / 2;
+	if (constrainedIndexes.empty()) {
+		m_In.segmentlist = (int*)NULL;
+		m_In.segmentmarkerlist = (int*)NULL;
 	}
+	else {
+		m_In.numberofsegments = constrainedIndexes.size();
+		m_In.segmentlist = (int*)malloc(m_In.numberofsegments * 2 * sizeof(int));
+		m_In.segmentmarkerlist = (int*)malloc(m_In.numberofsegments * sizeof(int));
 
-	for (int i = 0; i < m_In.numberofsegments; i++) {
-		m_In.segmentmarkerlist[i] = 2;
+		// Upload segments for outer border (constraints)
+		for (int i = 0; i < constrainedIndexes.size(); i++) {
+			m_In.segmentlist[i*2] = constrainedIndexes[i].first;
+			m_In.segmentlist[i*2+1] = constrainedIndexes[i].second;
+			m_In.segmentmarkerlist[i] = 2;
+		}
 	}
 }
 

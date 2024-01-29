@@ -107,7 +107,7 @@ public:
 	~TriangleWrapper();
 	void Initialize();
 
-	void UploadPoints(const std::vector<MyPoint2>& constrainedPoints, const std::vector<MyPoint2>& other = {});
+	void UploadPoints(const std::vector<MyPoint2>& constrainedPoints, const std::vector<MyPoint2>& other = {}, const std::vector<std::pair<int, int>>& constrainedIndexes = {});
 	std::vector<MyTriangle2> Triangulate();
 	std::vector<MyTriangle2> TriangulateConstrained();
 
