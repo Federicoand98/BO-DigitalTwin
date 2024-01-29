@@ -82,7 +82,7 @@ public:
 		
 		if (maxAreaInd != -1) {
 			ioMatrix = cv::Mat::zeros(ioMatrix.size(), CV_8U);
-			cv::drawContours(ioMatrix, contours, maxAreaInd, 255.0, 2);
+			cv::drawContours(ioMatrix, contours, maxAreaInd, 255.0, 1);
 		}
 	}
 

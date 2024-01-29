@@ -20,8 +20,10 @@
 #include "Exporter.h"
 
 #define SHOW_RESULT false
-#define SHOW_STEPS false
+#define SHOW_STEPS true
 #define SHOW_CLEAN_EDGES false
+
+#define SELECT_SINGLE true
 
 int findPrimaryVert(std::list<std::pair<int, int>>& v, int num, int t) {
 	int pos = num;
@@ -127,7 +129,7 @@ void Program::Execute() {
 
 	//uint16_t select = 52578;
 	//uint16_t select = 24069;
-	uint16_t select = 14066;
+	uint16_t select = 24200;
 	std::string selectLas = "32_684000_4930000.las";
 
 	ReaderCsv readerCsv;
@@ -138,23 +140,23 @@ void Program::Execute() {
 	std::vector<std::shared_ptr<Building>> buildings;
 	std::vector<MyPoint> targetPoints;
 	
-	/*
-	for (std::string line : lines) {
-		std::shared_ptr<Building> building = BuildingFactory::CreateBuilding(line);
-		if (building->GetCodiceOggetto() == select) {
-			buildings.push_back(building);
+	if (SELECT_SINGLE) {
+		for (std::string line : lines) {
+			std::shared_ptr<Building> building = BuildingFactory::CreateBuilding(line);
+			if (building->GetCodiceOggetto() == select) {
+				buildings.push_back(building);
+			}
 		}
 	}
-	*/
+	else {
+		for (std::string line : lines) {
+			std::shared_ptr<Building> building = BuildingFactory::CreateBuilding(line);
 
-	
-	for (std::string line : lines) {
-		std::shared_ptr<Building> building = BuildingFactory::CreateBuilding(line);
-		
-		std::vector<std::string> tiles = building->GetTiles();
-		auto res = std::find(tiles.begin(), tiles.end(), selectLas);
-		if (res != tiles.end()) {
-			buildings.push_back(building);
+			std::vector<std::string> tiles = building->GetTiles();
+			auto res = std::find(tiles.begin(), tiles.end(), selectLas);
+			if (res != tiles.end()) {
+				buildings.push_back(building);
+			}
 		}
 	}
 
@@ -349,13 +351,22 @@ void Program::Execute() {
 		ridgeEdgeProcesser->Process();
 		std::vector<MyPoint2> ridgeResult = ridgeEdgeProcesser->GetOutput();
 
+		for (auto it1 = ridgeResult.begin(); it1 != ridgeResult.end(); ++it1) {
+			for (auto it2 = roofResult.begin(); it2 != roofResult.end(); ++it2) {
+				float dist = it1->distance(*it2);
+
+				if (dist < 2.0) {
+					it1 = ridgeResult.erase(it1);
+					--it1;
+					break;
+				}
+			}
+		}
+
 		std::vector<std::pair<int, int>> outEdge = polygonize(cleanEdges);
-		std::cout << "odge: " << outEdge.size() << std::endl;
 
 		triWrap.Initialize();
-		std::cout << "inite: done" << std::endl;
 		triWrap.UploadPoints(roofResult, ridgeResult, outEdge);
-		std::cout << "uplode: done" << std::endl;
 		std::vector<MyTriangle2> triangles2 = triWrap.TriangulateConstrained();
 
 		std::vector<MyTriangle> triangles;
