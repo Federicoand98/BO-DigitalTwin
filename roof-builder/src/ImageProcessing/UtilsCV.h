@@ -231,9 +231,9 @@ public:
         std::shared_ptr<ImageProcesser> processer = std::make_shared<ImageProcesser>(matrix, showSteps);
 
         ImageProcessingUnit* blur = new BlurUnit(3.5);
-        ImageProcessingUnit* canny = new CannyUnit(50.0, 150.0);
+        ImageProcessingUnit* canny = new CannyUnit(20.0, 80.0);
         ImageProcessingUnit* morph = new MorphologyUnit(cv::MORPH_CLOSE, 
-            cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5)), 2);
+            cv::getStructuringElement(cv::MORPH_CROSS, cv::Size(5, 5)), 4);
         ImageProcessingUnit* feats = new FeaturesUnit(0.1, 10.0, 9);
         processer->AddProcessingUnit(blur);
         processer->AddProcessingUnit(canny);

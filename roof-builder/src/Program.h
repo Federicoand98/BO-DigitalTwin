@@ -20,8 +20,8 @@
 #include "Exporter.h"
 
 #define SHOW_RESULT true
-#define SHOW_STEPS false
-#define SHOW_CLEAN_EDGES false
+#define SHOW_STEPS true
+#define SHOW_CLEAN_EDGES true
 
 
 int findPrimaryVert(std::list<std::pair<int, int>>& v, int num, int t) {
@@ -123,7 +123,9 @@ void Program::Execute() {
 	std::setlocale(LC_ALL, "C");
 
 	//uint16_t select = 52578;
-	uint16_t select = 24069;
+	//uint16_t select = 24069;
+	uint16_t select = 51939;
+	std::string selectLas = "32_684000_4930000.las";
 
 	ReaderCsv readerCsv;
 	readerCsv.Read(ASSETS_PATH "compactBuildings.csv");
@@ -140,6 +142,17 @@ void Program::Execute() {
 		}
 	}
 
+	/*
+	for (std::string line : lines) {
+		std::shared_ptr<Building> building = BuildingFactory::CreateBuilding(line);
+		
+		std::vector<std::string> tiles = building->GetTiles();
+		auto res = std::find(tiles.begin(), tiles.end(), selectLas);
+		if (res != tiles.end()) {
+			buildings.push_back(building);
+		}
+	}
+	*/
 	readerCsv.Flush();
 	std::vector<MyMesh> meshes;
 	std::string filePath(OUTPUT_PATH "temp.stl");
@@ -294,6 +307,7 @@ void Program::Execute() {
 			std::cout << "edge: " << edge.first << " - " << edge.second << std::endl;
 		}
 		*/
+		std::cout << "clean edges done: " << building->GetCodiceOggetto() << std::endl;
 
 		if (SHOW_CLEAN_EDGES) {
 			cv::Mat resImage = cv::Mat::zeros(cv::Size(br.size(), br[0].size()), CV_MAKETYPE(CV_8U, 3));
