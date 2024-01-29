@@ -29,10 +29,10 @@ int findPrimaryVert(std::list<std::pair<int, int>>& v, int num, int t) {
 	bool found = false;
 
 	for (auto it = v.begin(); !found && it != v.end(); /* no increment here */) {
-		//std::cout << "searching " << pos << std::endl;
-		//std::cout << "current: " << it->first << " - " << it->second << std::endl;
+		std::cout << "searching " << pos << std::endl;
+		std::cout << "current: " << it->first << " - " << it->second << std::endl;
 		if (it->first == pos) {
-			//std::cout << "found " << pos << " with " << it->second << std::endl;
+			std::cout << "found " << pos << " with " << it->second << std::endl;
 			pos = it->second;
 
 			// remove this entry from v
@@ -43,7 +43,7 @@ int findPrimaryVert(std::list<std::pair<int, int>>& v, int num, int t) {
 			}
 		}
 		else if (it->second == pos) {
-			//std::cout << "found " << pos << " with " << it->first << std::endl;
+			std::cout << "found " << pos << " with " << it->first << std::endl;
 			pos = it->first;
 
 			// remove this entry from v
@@ -88,8 +88,8 @@ Program& Program::Get() {
 void Program::Execute() {
 	std::setlocale(LC_ALL, "C");
 
-	uint16_t select = 52578;
-	//uint16_t select = 24069;
+	//uint16_t select = 52578;
+	uint16_t select = 24069;
 
 	ReaderCsv readerCsv;
 	readerCsv.Read(ASSETS_PATH "compactBuildings.csv");
@@ -202,15 +202,33 @@ void Program::Execute() {
 
 		std::cout << "number of ext edges: " << externalEdges.size() << std::endl;
 
+		if (true) {
+			cv::Mat resImage = cv::Mat::zeros(cv::Size(br.size(), br[0].size()), CV_MAKETYPE(CV_8U, 3));
+			for (size_t i = 0; i < roofResult.size(); i++) {
+				cv::Point temp(static_cast<int>(std::round(roofResult[i].x)), static_cast<int>(std::round(roofResult[i].y)));
+				circle(resImage, temp, 0.1, cv::Scalar(0, 255, 0), 2); // BGR
+			}
+
+			cv::Scalar delaunay_color(128, 0, 128);
+
+			for (const auto& edge : externalEdges) {
+				cv::Point pt1(roofResult[edge.first].x, roofResult[edge.first].y);
+				cv::Point pt2(roofResult[edge.second].x, roofResult[edge.second].y);
+
+				cv::line(resImage, pt1, pt2, delaunay_color, 1);
+			}
+			UtilsCV::Show(resImage);
+		}
+
 		int precisionVal = buildingCornerNumb * 1.2;
 
 		std::cout << "prec val: " << precisionVal << std::endl;
 
-		/*
+		
 		for (const auto& edge : externalEdges) {
 			std::cout << "edge: " << edge.first << " - " << edge.second << std::endl;
 		}
-		*/
+		
 
 		std::list<std::pair<int, int>> cleanEdges;
 
