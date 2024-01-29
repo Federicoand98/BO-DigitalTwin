@@ -330,23 +330,14 @@ void Program::Execute() {
 		std::vector<MyTriangle2> triangles2 = triWrap.TriangulateConstrained();
 
 		std::vector<MyTriangle> triangles;
-		for (int i = 0; i < triangles2.size(); /* no increment here */) {
+		for (int i = 0; i < triangles2.size(); ++i) {
 			MyTriangle2 tri2 = triangles2[i];
-			float c_x = (tri2.p1.x + tri2.p2.x + tri2.p3.x) / 3.0;
-			float c_y = (tri2.p1.y + tri2.p2.y + tri2.p3.y) / 3.0;
+			
+			MyPoint p1 = grid.GetGridPointCoord(tri2.p1.x, tri2.p1.y);
+			MyPoint p2 = grid.GetGridPointCoord(tri2.p2.x, tri2.p2.y);
+			MyPoint p3 = grid.GetGridPointCoord(tri2.p3.x, tri2.p3.y);
 
-			if (br[c_x][br[0].size() - c_y] != 0) {
-				MyPoint p1 = grid.GetGridPointCoord(tri2.p1.x, tri2.p1.y);
-				MyPoint p2 = grid.GetGridPointCoord(tri2.p2.x, tri2.p2.y);
-				MyPoint p3 = grid.GetGridPointCoord(tri2.p3.x, tri2.p3.y);
-
-				triangles.push_back({ p1, p2, p3 });
-
-				++i; // only increment if we didn't erase
-			}
-			else {
-				triangles2.erase(triangles2.begin() + i);
-			}
+			triangles.push_back({ p1, p2, p3 });
 		}
 
 		meshes.push_back(MyMesh(triangles));
