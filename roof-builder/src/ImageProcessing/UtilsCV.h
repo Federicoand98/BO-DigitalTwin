@@ -1,6 +1,6 @@
 #pragma once
 
-#define VIEW_SCALE 1.5
+#define VIEW_SCALE 1.0
 
 #include <vector>
 #include <math.h>

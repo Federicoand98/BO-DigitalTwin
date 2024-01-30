@@ -23,7 +23,7 @@
 #define SHOW_STEPS false
 #define SHOW_CLEAN_EDGES false 
 
-#define SELECT_METHOD 2 //0 single building, 1 single las, 2 all las in dir
+#define SELECT_METHOD 1 //0 single building, 1 single las, 2 all las in dir
 
 #define LAS_PATH ASSETS_PATH "las/"
 
@@ -133,15 +133,21 @@ void Program::Execute() {
 
 	std::cout << "### Starting Data Load Process..." << std::endl;
 
-	uint16_t select = 52578;
+	//uint16_t select = 52578;
 	//uint16_t select = 24069;
-	std::string selectLas = "32_684000_4930000.las";
+
+	uint16_t select = 47924;
+	std::string selectLas = "32_685000_4928000.las";
 
 	std::vector<std::string> lasNames;
 
 	for (const auto& entry : std::filesystem::directory_iterator(LAS_PATH)) {
 		if (std::filesystem::is_regular_file(entry.path())) {
 			std::string fn = entry.path().filename().string();
+
+			if (SELECT_METHOD == 1 && fn.compare(selectLas) != 0)
+				continue;
+
 			//std::cout << entry.path().filename().string() << std::endl;
 			ReaderLas readerLas(entry.path().string());
 			readerLas.Read();
@@ -171,26 +177,11 @@ void Program::Execute() {
 			}
 		}
 	}
-	else if (SELECT_METHOD == 1) {
-		for (std::string line : lines) {
-			std::shared_ptr<Building> building = BuildingFactory::CreateBuilding(line);
-
-			std::vector<std::string> tiles = building->GetTiles();
-			auto res = std::find(tiles.begin(), tiles.end(), selectLas);
-			if (res != tiles.end()) {
-				buildings.push_back(building);
-			}
-		}
-	}
-	else if (SELECT_METHOD == 2) {
+	else {
 		for (std::string line : lines) {
 			std::shared_ptr<Building> building = BuildingFactory::CreateBuilding(line);
 			buildings.push_back(building);
 		}
-	}
-	else {
-		std::cerr << "Selected method outside range: " << SELECT_METHOD << std::endl;
-		return;
 	}
 
 	std::cout << "Buildings Loaded" << std::endl;
@@ -200,17 +191,14 @@ void Program::Execute() {
 	readerCsv.Flush();
 	std::vector<MyMesh> meshes;
 	std::string filePath(OUTPUT_PATH "temp.stl");
+	if (SELECT_METHOD == 1)
+		filePath = OUTPUT_PATH + selectLas.substr(0, selectLas.size()-4);
 	int c = 0;
 
 	for (std::shared_ptr<Building> building : buildings) {
 		std::vector<MyPoint> targetPoints;
-		std::cout << "Edificio: " << c << "/" << buildings.size() << std::endl;
 		c++;
-
-		std::cout << "##### Cod. Oggetto: " << building->GetCodiceOggetto() << std::endl;
-		int buildingCornerNumb = building->GetPolygon()->getNumPoints() - 1;
-		std::cout << "Corners number: " << buildingCornerNumb << std::endl;
-
+		
 		auto geomFactory = geos::geom::GeometryFactory::create();
 		
 		std::vector<std::string> tiles = building->GetTiles();
@@ -236,32 +224,17 @@ void Program::Execute() {
 		}
 		if (found == 0)
 			continue;
-		
-		/*
-			for (const auto& file : std::filesystem::directory_iterator(ASSETS_PATH "temp/")) {
-				ReaderLas readerLas(file.path().string());
-				readerLas.Read();
-
-				std::vector<MyPoint>* points = readerLas.Get();
-				if (!points->empty()) {
-					for (auto& p : *points) {
-						if (p.z >= building->GetQuotaGronda() && p.z <= (building->GetQuotaGronda() + building->GetTolleranza())) {
-							auto point = geomFactory->createPoint(geos::geom::Coordinate(p.x, p.y, p.z));
-							if (building->GetPolygon()->contains(point.get())) {
-								targetPoints.push_back(p);
-							}
-						}
-					}
-				}
-
-				points->clear();
-				readerLas.Flush();
-			}
-		*/
-
-		std::cout << "Points found: " << targetPoints.size() << std::endl;
 		if (targetPoints.size() <= 20)
 			continue;
+
+		std::cout << "Edificio: " << c << "/" << buildings.size() << std::endl;
+		std::cout << "##### Cod. Oggetto: " << building->GetCodiceOggetto() << std::endl;
+
+		int buildingCornerNumb = building->GetPolygon()->getNumPoints() - 1;
+		std::cout << "Corners number: " << buildingCornerNumb << std::endl;
+
+		std::cout << "Points found: " << targetPoints.size() << std::endl;
+		
 
 		std::vector<MyPoint> mainCluster = Dbscan::GetMainCluster(std::span(targetPoints), 0.8, 10);
 
