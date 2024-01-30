@@ -20,7 +20,7 @@
 #include "Triangle/TriangleWrap.h"
 #include "Exporter.h"
 
-#define DEBUG 1
+#define DEBUG 0
 
 #define SHOW_RESULT false
 #define SHOW_STEPS false
@@ -139,7 +139,7 @@ void Program::Execute() {
 	//uint16_t select = 52578;
 	//uint16_t select = 24069;
 
-	uint16_t select = 47924;
+	uint16_t select = 33614;
 	std::string selectLas = "32_686000_4929000.las";
 
 	std::vector<std::string> lasNames;
@@ -148,7 +148,7 @@ void Program::Execute() {
 		if (std::filesystem::is_regular_file(entry.path())) {
 			std::string fn = entry.path().filename().string();
 
-			if (SELECT_METHOD == 1 && fn.compare(selectLas) != 0)
+			if ((DEBUG == 1 || SELECT_METHOD == 1) && fn.compare(selectLas) != 0)
 				continue;
 
 			//std::cout << entry.path().filename().string() << std::endl;
@@ -242,6 +242,9 @@ void Program::Execute() {
 		std::cout << "Points found: " << targetPoints.size() << std::endl;
 
 		std::vector<MyPoint> mainCluster = Dbscan::GetMainCluster(std::span(targetPoints), 0.8, 10);
+
+		if (mainCluster.size() == 0)
+			continue;
 
 		Grid grid;
 		grid.Init(mainCluster, 0.1, 2.0, 0.2);
@@ -457,187 +460,177 @@ void Program::Execute() {
 	int c = 0;
 
 	std::for_each(std::execution::par, buildings.begin(), buildings.end(), [&c, &size, &meshes, this](std::shared_ptr<Building> building) {
-		std::vector<MyPoint> targetPoints;
-		c++;
+		try {
+			std::vector<MyPoint> targetPoints;
+			c++;
 
-		auto geomFactory = geos::geom::GeometryFactory::create();
+			auto geomFactory = geos::geom::GeometryFactory::create();
 
-		std::vector<std::string> tiles = building->GetTiles();
-		int found = 0;
+			std::vector<std::string> tiles = building->GetTiles();
+			int found = 0;
 
-		for (const std::string& tile : tiles) {
-			auto pos = m_lasData.find(tile);
-			if (pos != m_lasData.end()) {
-				found++;
+			for (const std::string& tile : tiles) {
+				auto pos = m_lasData.find(tile);
+				if (pos != m_lasData.end()) {
+					found++;
 
-				std::vector<MyPoint> points = pos->second;
-				if (!points.empty()) {
-					for (auto& p : points) {
-						if (p.z >= building->GetQuotaGronda() && p.z <= (building->GetQuotaGronda() + building->GetTolleranza())) {
-							auto point = geomFactory->createPoint(geos::geom::Coordinate(p.x, p.y, p.z));
-							if (building->GetPolygon()->contains(point.get())) {
-								targetPoints.push_back(p);
+					std::vector<MyPoint> points = pos->second;
+					if (!points.empty()) {
+						for (auto& p : points) {
+							if (p.z >= building->GetQuotaGronda() && p.z <= (building->GetQuotaGronda() + building->GetTolleranza())) {
+								auto point = geomFactory->createPoint(geos::geom::Coordinate(p.x, p.y, p.z));
+								if (building->GetPolygon()->contains(point.get())) {
+									targetPoints.push_back(p);
+								}
 							}
 						}
 					}
 				}
 			}
-		}
-		if (found == 0)
-			return;
-		if (targetPoints.size() <= 20)
-			return;
+			if (found == 0)
+				return;
+			if (targetPoints.size() <= 20)
+				return;
 
-		int buildingCornerNumb = building->GetPolygon()->getNumPoints() - 1;
-		
-		std::vector<MyPoint> mainCluster = Dbscan::GetMainCluster(std::span(targetPoints), 0.8, 10);
+			int buildingCornerNumb = building->GetPolygon()->getNumPoints() - 1;
 
-		Grid grid;
-		grid.Init(mainCluster, 0.1, 2.0, 0.2);
-		grid.FillHoles(3, 3);
-		targetPoints.clear();
+			std::vector<MyPoint> mainCluster = Dbscan::GetMainCluster(std::span(targetPoints), 0.8, 10);
 
-		std::vector<std::vector<float>> br = grid.GetBooleanRoof();
+			if (mainCluster.size() == 0)
+				return;
 
-		std::shared_ptr<ImageProcesser> roofEdgeProcesser = ImageProcesserFactory::CreateEdgePipeline(br, SHOW_STEPS);
+			Grid grid;
+			grid.Init(mainCluster, 0.1, 2.0, 0.2);
+			grid.FillHoles(3, 3);
+			targetPoints.clear();
 
-		float safetyFactor = 3.0;
-		roofEdgeProcesser->Process(buildingCornerNumb * safetyFactor);
-		std::vector<MyPoint2> roofResult = roofEdgeProcesser->GetOutput();
+			std::vector<std::vector<float>> br = grid.GetBooleanRoof();
 
-		if (roofResult.size() < 3) // can't triangulate
-			return;
+			std::shared_ptr<ImageProcesser> roofEdgeProcesser = ImageProcesserFactory::CreateEdgePipeline(br, SHOW_STEPS);
 
-		TriangleWrapper triWrap;
-		triWrap.Initialize();
-		triWrap.UploadPoints(roofResult);
-		std::vector<MyTriangle2> tris2 = triWrap.Triangulate();
-		std::vector<std::vector<int>> indices = triWrap.GetIndices();
+			float safetyFactor = 3.0;
+			roofEdgeProcesser->Process(buildingCornerNumb * safetyFactor);
+			std::vector<MyPoint2> roofResult = roofEdgeProcesser->GetOutput();
 
-		std::vector<MyTriangle> tempTris;
-		for (int i = 0; i < tris2.size(); /* no increment here */) {
-			MyTriangle2 tri2 = tris2[i];
-			float c_x = (tri2.p1.x + tri2.p2.x + tri2.p3.x) / 3.0;
-			float c_y = (tri2.p1.y + tri2.p2.y + tri2.p3.y) / 3.0;
+			if (roofResult.size() < 3) // can't triangulate
+				return;
 
-			cv::Mat cFill = roofEdgeProcesser->GetCFill();
-			if (cFill.at<uchar>(c_y, c_x) != 0) {
+			TriangleWrapper triWrap;
+			triWrap.Initialize();
+			triWrap.UploadPoints(roofResult);
+			std::vector<MyTriangle2> tris2 = triWrap.Triangulate();
+			std::vector<std::vector<int>> indices = triWrap.GetIndices();
+
+			std::vector<MyTriangle> tempTris;
+			for (int i = 0; i < tris2.size(); /* no increment here */) {
+				MyTriangle2 tri2 = tris2[i];
+				float c_x = (tri2.p1.x + tri2.p2.x + tri2.p3.x) / 3.0;
+				float c_y = (tri2.p1.y + tri2.p2.y + tri2.p3.y) / 3.0;
+
+				cv::Mat cFill = roofEdgeProcesser->GetCFill();
+				if (cFill.at<uchar>(c_y, c_x) != 0) {
+					MyPoint p1 = grid.GetGridPointCoord(tri2.p1.x, tri2.p1.y);
+					MyPoint p2 = grid.GetGridPointCoord(tri2.p2.x, tri2.p2.y);
+					MyPoint p3 = grid.GetGridPointCoord(tri2.p3.x, tri2.p3.y);
+
+					tempTris.push_back({ p1, p2, p3 });
+
+					++i; // only increment if we didn't erase
+				}
+				else {
+					// remove this entry from tris2
+					tris2.erase(tris2.begin() + i);
+					indices.erase(indices.begin() + i);
+				}
+			}
+
+			std::map<std::pair<int, int>, int> edgeFrequency;
+
+			for (const auto& triangle : indices) {
+				for (int i = 0; i < 3; ++i) {
+					// need to order the vertices
+					std::pair<int, int> edge = std::minmax(triangle[i], triangle[(i + 1) % 3]);
+					// increment frequency
+					edgeFrequency[edge]++;
+				}
+			}
+
+			std::list<std::pair<int, int>> externalEdges;
+
+			for (const auto& item : edgeFrequency) {
+				if (item.second == 1) {
+					externalEdges.push_back(item.first);
+				}
+			}
+
+
+			int precisionVal = buildingCornerNumb * 1.8;
+			if (precisionVal > externalEdges.size())
+				precisionVal = externalEdges.size();
+
+
+			std::list<std::pair<int, int>> cleanEdges;
+
+			while (!externalEdges.empty()) { // no increment here
+				auto curr = externalEdges.begin();
+				if (curr->first < precisionVal) {
+					if (curr->second < precisionVal) {
+						cleanEdges.push_back(*curr);
+						externalEdges.erase(curr);  // delete this entry from external edges and move to next
+					}
+					else {
+						int temp = findPrimaryVert(externalEdges, curr->first, precisionVal);
+						if (temp > 0 && temp != curr->first) {
+							cleanEdges.push_back({ curr->first, temp });
+						}
+					}
+				}
+				else {
+					break;
+				}
+			}
+
+			roofResult.erase(roofResult.begin() + precisionVal, roofResult.end());
+
+			std::vector<std::vector<float>> lm = grid.GetLocalMax(11);
+			std::shared_ptr<ImageProcesser> ridgeEdgeProcesser = ImageProcesserFactory::CreateRidgePipeline(lm, SHOW_STEPS);
+			ridgeEdgeProcesser->Process();
+			std::vector<MyPoint2> ridgeResult = ridgeEdgeProcesser->GetOutput();
+
+			for (auto it1 = ridgeResult.begin(); it1 != ridgeResult.end(); ++it1) {
+				for (auto it2 = roofResult.begin(); it2 != roofResult.end(); ++it2) {
+					float dist = it1->distance(*it2);
+
+					if (dist < 2.0) {
+						it1 = ridgeResult.erase(it1);
+						--it1;
+						break;
+					}
+				}
+			}
+
+			std::vector<std::pair<int, int>> outEdge = polygonize(cleanEdges);
+
+			triWrap.Initialize();
+			triWrap.UploadPoints(roofResult, ridgeResult, outEdge);
+			std::vector<MyTriangle2> triangles2 = triWrap.TriangulateConstrained();
+
+			std::vector<MyTriangle> triangles;
+			for (int i = 0; i < triangles2.size(); ++i) {
+				MyTriangle2 tri2 = triangles2[i];
+
 				MyPoint p1 = grid.GetGridPointCoord(tri2.p1.x, tri2.p1.y);
 				MyPoint p2 = grid.GetGridPointCoord(tri2.p2.x, tri2.p2.y);
 				MyPoint p3 = grid.GetGridPointCoord(tri2.p3.x, tri2.p3.y);
 
-				tempTris.push_back({ p1, p2, p3 });
-
-				++i; // only increment if we didn't erase
+				triangles.push_back({ p1, p2, p3 });
 			}
-			else {
-				// remove this entry from tris2
-				tris2.erase(tris2.begin() + i);
-				indices.erase(indices.begin() + i);
-			}
+
+			meshes.push_back(MyMesh(triangles));
 		}
-
-		std::map<std::pair<int, int>, int> edgeFrequency;
-
-		for (const auto& triangle : indices) {
-			for (int i = 0; i < 3; ++i) {
-				// need to order the vertices
-				std::pair<int, int> edge = std::minmax(triangle[i], triangle[(i + 1) % 3]);
-				// increment frequency
-				edgeFrequency[edge]++;
-			}
+		catch (const std::exception& e) {
+			std::cerr << "Error during execution of building: " << building->GetCodiceOggetto() << "\nError: " << e.what() << std::endl;
 		}
-
-		std::list<std::pair<int, int>> externalEdges;
-
-		for (const auto& item : edgeFrequency) {
-			if (item.second == 1) {
-				externalEdges.push_back(item.first);
-			}
-		}
-
-		//std::cout << "number of ext edges: " << externalEdges.size() << std::endl;
-
-		int precisionVal = buildingCornerNumb * 1.8;
-		if (precisionVal > externalEdges.size())
-			precisionVal = externalEdges.size();
-
-		//std::cout << "prec val: " << precisionVal << std::endl;
-
-		/*
-		for (const auto& edge : externalEdges) {
-			std::cout << "edge: " << edge.first << " - " << edge.second << std::endl;
-		}
-		*/
-
-		std::list<std::pair<int, int>> cleanEdges;
-
-		//std::cout << "edges before: " << externalEdges.size() << std::endl;
-
-		while (!externalEdges.empty()) { // no increment here
-			auto curr = externalEdges.begin();
-			if (curr->first < precisionVal) {
-				if (curr->second < precisionVal) {
-					cleanEdges.push_back(*curr);
-					externalEdges.erase(curr);  // delete this entry from external edges and move to next
-				}
-				else {
-					int temp = findPrimaryVert(externalEdges, curr->first, precisionVal);
-					if (temp > 0 && temp != curr->first) {
-						cleanEdges.push_back({ curr->first, temp });
-					}
-				}
-			}
-			else {
-				break;
-			}
-		}
-		/*
-		std::cout << "edges after: " << externalEdges.size() << std::endl;
-
-		for (const auto& edge : cleanEdges) {
-			std::cout << "edge: " << edge.first << " - " << edge.second << std::endl;
-		}
-		*/
-		//std::cout << "clean edges done: " << building->GetCodiceOggetto() << std::endl;
-
-		roofResult.erase(roofResult.begin() + precisionVal, roofResult.end());
-
-		std::vector<std::vector<float>> lm = grid.GetLocalMax(11);
-		std::shared_ptr<ImageProcesser> ridgeEdgeProcesser = ImageProcesserFactory::CreateRidgePipeline(lm, SHOW_STEPS);
-		ridgeEdgeProcesser->Process();
-		std::vector<MyPoint2> ridgeResult = ridgeEdgeProcesser->GetOutput();
-
-		for (auto it1 = ridgeResult.begin(); it1 != ridgeResult.end(); ++it1) {
-			for (auto it2 = roofResult.begin(); it2 != roofResult.end(); ++it2) {
-				float dist = it1->distance(*it2);
-
-				if (dist < 2.0) {
-					it1 = ridgeResult.erase(it1);
-					--it1;
-					break;
-				}
-			}
-		}
-
-		std::vector<std::pair<int, int>> outEdge = polygonize(cleanEdges);
-
-		triWrap.Initialize();
-		triWrap.UploadPoints(roofResult, ridgeResult, outEdge);
-		std::vector<MyTriangle2> triangles2 = triWrap.TriangulateConstrained();
-
-		std::vector<MyTriangle> triangles;
-		for (int i = 0; i < triangles2.size(); ++i) {
-			MyTriangle2 tri2 = triangles2[i];
-
-			MyPoint p1 = grid.GetGridPointCoord(tri2.p1.x, tri2.p1.y);
-			MyPoint p2 = grid.GetGridPointCoord(tri2.p2.x, tri2.p2.y);
-			MyPoint p3 = grid.GetGridPointCoord(tri2.p3.x, tri2.p3.y);
-
-			triangles.push_back({ p1, p2, p3 });
-		}
-
-		meshes.push_back(MyMesh(triangles));
 	});
 #endif
 
