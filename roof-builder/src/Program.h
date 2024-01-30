@@ -9,6 +9,7 @@
 #include <chrono>
 #include <locale>
 #include <algorithm>
+#include <execution>
 #include "Readers/ReaderLas.h"
 #include "Grid.h"
 #include "Building.h"
@@ -192,10 +193,12 @@ void Program::Execute() {
 	std::vector<MyMesh> meshes;
 	std::string filePath(OUTPUT_PATH "temp.stl");
 	if (SELECT_METHOD == 1)
-		filePath = OUTPUT_PATH + selectLas.substr(0, selectLas.size()-3) + "stl";
+		filePath = OUTPUT_PATH + selectLas.substr(0, selectLas.size()-4) + "_roofs.stl";
+
+	int size = buildings.size();
 	int c = 0;
 
-	for (std::shared_ptr<Building> building : buildings) {
+	std::for_each(std::execution::par, buildings.begin(), buildings.end(), [&c, &size, &meshes, this](std::shared_ptr<Building> building) {
 		std::vector<MyPoint> targetPoints;
 		c++;
 		
@@ -223,11 +226,11 @@ void Program::Execute() {
 			}
 		}
 		if (found == 0)
-			continue;
+			return;
 		if (targetPoints.size() <= 20)
-			continue;
+			return;
 
-		std::cout << "Edificio: " << c << "/" << buildings.size() << std::endl;
+		std::cout << "Edificio: " << c << "/" << size << std::endl;
 		std::cout << "##### Cod. Oggetto: " << building->GetCodiceOggetto() << std::endl;
 
 		int buildingCornerNumb = building->GetPolygon()->getNumPoints() - 1;
@@ -251,7 +254,7 @@ void Program::Execute() {
 		std::vector<MyPoint2> roofResult = roofEdgeProcesser->GetOutput();
 
 		if (roofResult.size() < 3) // can't triangulate
-			continue;
+			return;
 
 		TriangleWrapper triWrap;
 		triWrap.Initialize();
@@ -445,7 +448,7 @@ void Program::Execute() {
 			}
 			UtilsCV::Show(resImage);
 		}
-	}
+	});
 
 	Exporter::ExportStl(meshes, filePath);
 
