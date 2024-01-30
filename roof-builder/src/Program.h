@@ -192,7 +192,7 @@ void Program::Execute() {
 	std::vector<MyMesh> meshes;
 	std::string filePath(OUTPUT_PATH "temp.stl");
 	if (SELECT_METHOD == 1)
-		filePath = OUTPUT_PATH + selectLas.substr(0, selectLas.size()-4);
+		filePath = OUTPUT_PATH + selectLas.substr(0, selectLas.size()-3) + "stl";
 	int c = 0;
 
 	for (std::shared_ptr<Building> building : buildings) {
@@ -234,7 +234,6 @@ void Program::Execute() {
 		std::cout << "Corners number: " << buildingCornerNumb << std::endl;
 
 		std::cout << "Points found: " << targetPoints.size() << std::endl;
-		
 
 		std::vector<MyPoint> mainCluster = Dbscan::GetMainCluster(std::span(targetPoints), 0.8, 10);
 
