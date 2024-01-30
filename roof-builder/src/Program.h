@@ -20,10 +20,10 @@
 #include "Exporter.h"
 
 #define SHOW_RESULT false
-#define SHOW_STEPS true
+#define SHOW_STEPS false
 #define SHOW_CLEAN_EDGES false
 
-#define SELECT_SINGLE true
+#define SELECT_SINGLE false
 
 int findPrimaryVert(std::list<std::pair<int, int>>& v, int num, int t) {
 	int pos = num;
@@ -129,7 +129,7 @@ void Program::Execute() {
 
 	//uint16_t select = 52578;
 	//uint16_t select = 24069;
-	uint16_t select = 24200;
+	uint16_t select = 21768;
 	std::string selectLas = "32_684000_4930000.las";
 
 	ReaderCsv readerCsv;
@@ -196,7 +196,8 @@ void Program::Execute() {
 			points->clear();
 			readerLas.Flush();
 		}
-		if (targetPoints.size() == 0)
+		std::cout << "Points found: " << targetPoints.size() << std::endl;
+		if (targetPoints.size() <= 20)
 			continue;
 
 		std::vector<MyPoint> mainCluster = Dbscan::GetMainCluster(std::span(targetPoints), 0.8, 10);
@@ -213,6 +214,9 @@ void Program::Execute() {
 		float safetyFactor = 3.0;
 		roofEdgeProcesser->Process(buildingCornerNumb*safetyFactor);
 		std::vector<MyPoint2> roofResult = roofEdgeProcesser->GetOutput();
+
+		if (roofResult.size() < 3) // can't triangulate
+			continue;
 
 		TriangleWrapper triWrap;
 		triWrap.Initialize();
