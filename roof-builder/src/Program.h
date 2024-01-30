@@ -131,21 +131,30 @@ Program& Program::Get() {
 void Program::Execute() {
 	std::setlocale(LC_ALL, "C");
 
-	//uint16_t select = 52578;
+	std::cout << "### Starting Data Load Process..." << std::endl;
+
+	uint16_t select = 52578;
 	//uint16_t select = 24069;
-	uint16_t select = 21768;
 	std::string selectLas = "32_684000_4930000.las";
 
 	std::vector<std::string> lasNames;
 
-	if (SELECT_METHOD == 2) {
-		for (const auto& entry : std::filesystem::directory_iterator(LAS_PATH)) {
-			if (std::filesystem::is_regular_file(entry.path())) {
-				lasNames.push_back(entry.path().filename().string());
-				//std::cout << entry.path().filename().string() << std::endl;
-			}
+	for (const auto& entry : std::filesystem::directory_iterator(LAS_PATH)) {
+		if (std::filesystem::is_regular_file(entry.path())) {
+			std::string fn = entry.path().filename().string();
+			//std::cout << entry.path().filename().string() << std::endl;
+			ReaderLas readerLas(entry.path().string());
+			readerLas.Read();
+
+			std::vector<MyPoint>* points = readerLas.Get();
+
+			m_lasData.insert({ fn, *points });
+
+			points->clear();
+			readerLas.Flush();
 		}
 	}
+	std::cout << "Las Files Loaded"<< std::endl;
 
 	ReaderCsv readerCsv;
 	readerCsv.Read(ASSETS_PATH "compactBuildings.csv");
@@ -184,6 +193,10 @@ void Program::Execute() {
 		return;
 	}
 
+	std::cout << "Buildings Loaded" << std::endl;
+
+	std::cout << "### Computation Start" << std::endl;
+
 	readerCsv.Flush();
 	std::vector<MyMesh> meshes;
 	std::string filePath(OUTPUT_PATH "temp.stl");
@@ -200,39 +213,32 @@ void Program::Execute() {
 
 		auto geomFactory = geos::geom::GeometryFactory::create();
 		
-		if (SELECT_METHOD == 2) {
-			std::vector<std::string> tiles = building->GetTiles();
-			int found = 0;
+		std::vector<std::string> tiles = building->GetTiles();
+		int found = 0;
 
-			for (const std::string& tile : tiles) {
-				auto it = std::find(lasNames.begin(), lasNames.end(), tile);
-				if (it != lasNames.end()) {
-					found++;
+		for (const std::string& tile : tiles) {
+			auto pos = m_lasData.find(tile);
+			if (pos != m_lasData.end()) {
+				found++;
 
-					ReaderLas readerLas(LAS_PATH + tile);
-					readerLas.Read();
-
-					std::vector<MyPoint>* points = readerLas.Get();
-					if (!points->empty()) {
-						for (auto& p : *points) {
-							if (p.z >= building->GetQuotaGronda() && p.z <= (building->GetQuotaGronda() + building->GetTolleranza())) {
-								auto point = geomFactory->createPoint(geos::geom::Coordinate(p.x, p.y, p.z));
-								if (building->GetPolygon()->contains(point.get())) {
-									targetPoints.push_back(p);
-								}
+				std::vector<MyPoint> points = pos->second;
+				if (!points.empty()) {
+					for (auto& p : points) {
+						if (p.z >= building->GetQuotaGronda() && p.z <= (building->GetQuotaGronda() + building->GetTolleranza())) {
+							auto point = geomFactory->createPoint(geos::geom::Coordinate(p.x, p.y, p.z));
+							if (building->GetPolygon()->contains(point.get())) {
+								targetPoints.push_back(p);
 							}
 						}
 					}
-
-					points->clear();
-					readerLas.Flush();
 				}
 			}
-			if (found == 0)
-				continue;
 		}
-		else {
-			for (const auto& file : std::filesystem::directory_iterator(ASSETS_PATH "las/")) {
+		if (found == 0)
+			continue;
+		
+		/*
+			for (const auto& file : std::filesystem::directory_iterator(ASSETS_PATH "temp/")) {
 				ReaderLas readerLas(file.path().string());
 				readerLas.Read();
 
@@ -251,7 +257,7 @@ void Program::Execute() {
 				points->clear();
 				readerLas.Flush();
 			}
-		}
+		*/
 
 		std::cout << "Points found: " << targetPoints.size() << std::endl;
 		if (targetPoints.size() <= 20)
@@ -323,7 +329,7 @@ void Program::Execute() {
 			}
 		}
 
-		std::cout << "number of ext edges: " << externalEdges.size() << std::endl;
+		//std::cout << "number of ext edges: " << externalEdges.size() << std::endl;
 
 		
 		if (SHOW_CLEAN_EDGES) {
@@ -348,7 +354,7 @@ void Program::Execute() {
 		if (precisionVal > externalEdges.size())
 			precisionVal = externalEdges.size();
 
-		std::cout << "prec val: " << precisionVal << std::endl;
+		//std::cout << "prec val: " << precisionVal << std::endl;
 
 		/*
 		for (const auto& edge : externalEdges) {
@@ -385,7 +391,7 @@ void Program::Execute() {
 			std::cout << "edge: " << edge.first << " - " << edge.second << std::endl;
 		}
 		*/
-		std::cout << "clean edges done: " << building->GetCodiceOggetto() << std::endl;
+		//std::cout << "clean edges done: " << building->GetCodiceOggetto() << std::endl;
 
 		if (SHOW_CLEAN_EDGES) {
 			cv::Mat resImage = cv::Mat::zeros(cv::Size(br.size(), br[0].size()), CV_MAKETYPE(CV_8U, 3));
@@ -442,6 +448,7 @@ void Program::Execute() {
 		}
 
 		meshes.push_back(MyMesh(triangles));
+		std::cout << "Mesh Done: " << building->GetCodiceOggetto() << std::endl;
 
 		if (SHOW_RESULT) {
 			cv::Mat resImage = cv::Mat::zeros(cv::Size(br.size(), br[0].size()), CV_MAKETYPE(CV_8U, 3));
