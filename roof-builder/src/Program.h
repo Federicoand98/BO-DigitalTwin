@@ -21,9 +21,11 @@
 
 #define SHOW_RESULT false
 #define SHOW_STEPS false
-#define SHOW_CLEAN_EDGES false
+#define SHOW_CLEAN_EDGES false 
 
-#define SELECT_SINGLE false
+#define SELECT_METHOD 2 //0 single building, 1 single las, 2 all las in dir
+
+#define LAS_PATH ASSETS_PATH "las/"
 
 int findPrimaryVert(std::list<std::pair<int, int>>& v, int num, int t) {
 	int pos = num;
@@ -112,6 +114,8 @@ public:
 	static Program& Get();
 
 	void Execute();
+private:
+	std::map<std::string, std::vector<MyPoint>> m_lasData;
 };
 
 static Program* s_Instance = nullptr;
@@ -132,15 +136,25 @@ void Program::Execute() {
 	uint16_t select = 21768;
 	std::string selectLas = "32_684000_4930000.las";
 
+	std::vector<std::string> lasNames;
+
+	if (SELECT_METHOD == 2) {
+		for (const auto& entry : std::filesystem::directory_iterator(LAS_PATH)) {
+			if (std::filesystem::is_regular_file(entry.path())) {
+				lasNames.push_back(entry.path().filename().string());
+				//std::cout << entry.path().filename().string() << std::endl;
+			}
+		}
+	}
+
 	ReaderCsv readerCsv;
 	readerCsv.Read(ASSETS_PATH "compactBuildings.csv");
 
 	std::vector<std::string> lines = readerCsv.Ottieni();
 
 	std::vector<std::shared_ptr<Building>> buildings;
-	std::vector<MyPoint> targetPoints;
 	
-	if (SELECT_SINGLE) {
+	if (SELECT_METHOD == 0) {
 		for (std::string line : lines) {
 			std::shared_ptr<Building> building = BuildingFactory::CreateBuilding(line);
 			if (building->GetCodiceOggetto() == select) {
@@ -148,7 +162,7 @@ void Program::Execute() {
 			}
 		}
 	}
-	else {
+	else if (SELECT_METHOD == 1) {
 		for (std::string line : lines) {
 			std::shared_ptr<Building> building = BuildingFactory::CreateBuilding(line);
 
@@ -159,14 +173,24 @@ void Program::Execute() {
 			}
 		}
 	}
+	else if (SELECT_METHOD == 2) {
+		for (std::string line : lines) {
+			std::shared_ptr<Building> building = BuildingFactory::CreateBuilding(line);
+			buildings.push_back(building);
+		}
+	}
+	else {
+		std::cerr << "Selected method outside range: " << SELECT_METHOD << std::endl;
+		return;
+	}
 
 	readerCsv.Flush();
 	std::vector<MyMesh> meshes;
 	std::string filePath(OUTPUT_PATH "temp.stl");
 	int c = 0;
 
-	// TODO: possibile filtro sugli edifici che appartengono a determinati tile
 	for (std::shared_ptr<Building> building : buildings) {
+		std::vector<MyPoint> targetPoints;
 		std::cout << "Edificio: " << c << "/" << buildings.size() << std::endl;
 		c++;
 
@@ -176,26 +200,59 @@ void Program::Execute() {
 
 		auto geomFactory = geos::geom::GeometryFactory::create();
 		
-		// TODO: iterare su tutti i tile del building
-		for (const auto& file : std::filesystem::directory_iterator(ASSETS_PATH "las/")) {
-			ReaderLas readerLas(file.path().string());
-			readerLas.Read();
+		if (SELECT_METHOD == 2) {
+			std::vector<std::string> tiles = building->GetTiles();
+			int found = 0;
 
-			std::vector<MyPoint>* points = readerLas.Get();
-			if (!points->empty()) {
-				for (auto &p : *points) {
-					if (p.z >= building->GetQuotaGronda() && p.z <= (building->GetQuotaGronda() + building->GetTolleranza())) {
-						auto point = geomFactory->createPoint(geos::geom::Coordinate(p.x, p.y, p.z));
-						if (building->GetPolygon()->contains(point.get())) {
-							targetPoints.push_back(p);
+			for (const std::string& tile : tiles) {
+				auto it = std::find(lasNames.begin(), lasNames.end(), tile);
+				if (it != lasNames.end()) {
+					found++;
+
+					ReaderLas readerLas(LAS_PATH + tile);
+					readerLas.Read();
+
+					std::vector<MyPoint>* points = readerLas.Get();
+					if (!points->empty()) {
+						for (auto& p : *points) {
+							if (p.z >= building->GetQuotaGronda() && p.z <= (building->GetQuotaGronda() + building->GetTolleranza())) {
+								auto point = geomFactory->createPoint(geos::geom::Coordinate(p.x, p.y, p.z));
+								if (building->GetPolygon()->contains(point.get())) {
+									targetPoints.push_back(p);
+								}
+							}
+						}
+					}
+
+					points->clear();
+					readerLas.Flush();
+				}
+			}
+			if (found == 0)
+				continue;
+		}
+		else {
+			for (const auto& file : std::filesystem::directory_iterator(ASSETS_PATH "las/")) {
+				ReaderLas readerLas(file.path().string());
+				readerLas.Read();
+
+				std::vector<MyPoint>* points = readerLas.Get();
+				if (!points->empty()) {
+					for (auto& p : *points) {
+						if (p.z >= building->GetQuotaGronda() && p.z <= (building->GetQuotaGronda() + building->GetTolleranza())) {
+							auto point = geomFactory->createPoint(geos::geom::Coordinate(p.x, p.y, p.z));
+							if (building->GetPolygon()->contains(point.get())) {
+								targetPoints.push_back(p);
+							}
 						}
 					}
 				}
-			}
 
-			points->clear();
-			readerLas.Flush();
+				points->clear();
+				readerLas.Flush();
+			}
 		}
+
 		std::cout << "Points found: " << targetPoints.size() << std::endl;
 		if (targetPoints.size() <= 20)
 			continue;

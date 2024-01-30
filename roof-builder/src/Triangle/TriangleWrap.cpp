@@ -67,7 +67,7 @@ void TriangleWrapper::UploadPoints(const std::vector<MyPoint2>& points, const st
 }
 
 std::vector<MyTriangle2> TriangleWrapper::Triangulate() {
-	char cmd[] = "z";
+	char cmd[] = "zQ";
 	triangulate(cmd, &m_In, &m_Out, (struct triangulateio*)NULL);
 
 	std::vector<MyTriangle2> triangles;
@@ -94,7 +94,7 @@ std::vector<MyTriangle2> TriangleWrapper::Triangulate() {
 }
 
 std::vector<MyTriangle2> TriangleWrapper::TriangulateConstrained() {
-	char cmd[] = "pz";
+	char cmd[] = "pzQ";
 	triangulate(cmd, &m_In, &m_Out, (struct triangulateio*)NULL);
 
 	std::vector<MyTriangle2> triangles;
