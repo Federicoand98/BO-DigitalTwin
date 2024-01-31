@@ -20,7 +20,7 @@
 #include "Triangle/TriangleWrap.h"
 #include "Exporter.h"
 
-#define DEBUG 0
+#define DEBUG 1
 
 #define SHOW_RESULT false
 #define SHOW_STEPS false
@@ -139,8 +139,8 @@ void Program::Execute() {
 	//uint16_t select = 52578;
 	//uint16_t select = 24069;
 
-	uint16_t select = 33614;
-	std::string selectLas = "32_686000_4929000.las";
+	uint16_t select = 837;
+	std::string selectLas = "32_687000_4928500.las";
 
 	std::vector<std::string> lasNames;
 
@@ -197,6 +197,7 @@ void Program::Execute() {
 	if (SELECT_METHOD == 1)
 		filePath = OUTPUT_PATH + selectLas.substr(0, selectLas.size()-4) + "_roofs.stl";
 
+	auto start = std::chrono::high_resolution_clock::now();
 
 #if DEBUG
 	int c = 0;
@@ -458,11 +459,18 @@ void Program::Execute() {
 #else
 	int size = buildings.size();
 	int c = 0;
-
 	std::for_each(std::execution::par, buildings.begin(), buildings.end(), [&c, &size, &meshes, this](std::shared_ptr<Building> building) {
 		try {
 			std::vector<MyPoint> targetPoints;
-			c++;
+			++c;
+
+			/*
+			int perc = (c * 100) / size;
+
+			if (perc % 25 == 0 && perc != 0) {
+				std::cout << perc << "%" << std::endl;
+			}
+			*/
 
 			auto geomFactory = geos::geom::GeometryFactory::create();
 
@@ -634,6 +642,18 @@ void Program::Execute() {
 	});
 #endif
 
+	auto end = std::chrono::high_resolution_clock::now();
+
+	auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
+
+	auto minutes = std::chrono::duration_cast<std::chrono::minutes>(duration);
+	duration -= minutes;
+	auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
+
+
+	std::cout << "### Computation time: " << minutes.count() << " min and " << seconds.count() << " sec" << std::endl;
+
 	Exporter::ExportStl(meshes, filePath);
 
+	std::cout << "### Export done ###" << std::endl;
 }
