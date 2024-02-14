@@ -24,9 +24,9 @@
 
 #define SHOW_RESULT false
 #define SHOW_STEPS false
-#define SHOW_CLEAN_EDGES false 
+#define SHOW_CLEAN_EDGES true 
 
-#define SELECT_METHOD 1 //0 single building, 1 single las, 2 all las in dir
+#define SELECT_METHOD 0 //0 single building, 1 single las, 2 all las in dir
 
 #define LAS_PATH ASSETS_PATH "las/"
 
@@ -136,11 +136,11 @@ void Program::Execute() {
 
 	std::cout << "### Starting Data Load Process..." << std::endl;
 
-	//uint16_t select = 52578;
+	uint16_t select = 52578;
 	//uint16_t select = 24069;
 
-	uint16_t select = 837;
-	std::string selectLas = "32_687000_4928500.las";
+	//uint16_t select = 837;
+	std::string selectLas = "32_684000_4930000.las";
 
 	std::vector<std::string> lasNames;
 
@@ -313,15 +313,12 @@ void Program::Execute() {
 
 		//std::cout << "number of ext edges: " << externalEdges.size() << std::endl;
 
-		
-		if (SHOW_CLEAN_EDGES) {
-			cv::Mat resImage = cv::Mat::zeros(cv::Size(br.size(), br[0].size()), CV_MAKETYPE(CV_8U, 3));
-			for (size_t i = 0; i < roofResult.size(); i++) {
-				cv::Point temp(static_cast<int>(std::round(roofResult[i].x)), static_cast<int>(std::round(roofResult[i].y)));
-				circle(resImage, temp, 0.1, cv::Scalar(0, 255, 0), 2); // BGR
-			}
+		cv::Scalar delaunay_color(184, 32, 15);
+		cv::Scalar point_color(15, 15, 185);
+		cv::Scalar point_color2(15, 185, 15);
 
-			cv::Scalar delaunay_color(128, 0, 128);
+		if (SHOW_CLEAN_EDGES) {
+			cv::Mat resImage = cv::Mat(cv::Size(br.size(), br[0].size()), CV_MAKETYPE(CV_8U, 3), cv::Scalar(255,255,255));
 
 			for (const auto& edge : externalEdges) {
 				cv::Point pt1(roofResult[edge.first].x, roofResult[edge.first].y);
@@ -329,6 +326,12 @@ void Program::Execute() {
 
 				cv::line(resImage, pt1, pt2, delaunay_color, 1);
 			}
+
+			for (size_t i = 0; i < roofResult.size(); i++) {
+				cv::Point temp(static_cast<int>(std::round(roofResult[i].x)), static_cast<int>(std::round(roofResult[i].y)));
+				circle(resImage, temp, 1, point_color, 2); // BGR
+			}
+
 			UtilsCV::Show(resImage);
 		}
 
@@ -376,20 +379,23 @@ void Program::Execute() {
 		//std::cout << "clean edges done: " << building->GetCodiceOggetto() << std::endl;
 
 		if (SHOW_CLEAN_EDGES) {
-			cv::Mat resImage = cv::Mat::zeros(cv::Size(br.size(), br[0].size()), CV_MAKETYPE(CV_8U, 3));
-			for (size_t i = 0; i < roofResult.size(); i++) {
-				cv::Point temp(static_cast<int>(std::round(roofResult[i].x)), static_cast<int>(std::round(roofResult[i].y)));
-				circle(resImage, temp, 0.1, cv::Scalar(0, 255, 0), 2); // BGR
-			}
-			
-			cv::Scalar delaunay_color(128, 0, 128);
-
+			cv::Mat resImage = cv::Mat(cv::Size(br.size(), br[0].size()), CV_8UC3, cv::Scalar(255,255,255));
 			for (const auto& edge : cleanEdges) {
 				cv::Point pt1(roofResult[edge.first].x, roofResult[edge.first].y);
 				cv::Point pt2(roofResult[edge.second].x, roofResult[edge.second].y);
 
 				cv::line(resImage, pt1, pt2, delaunay_color, 1);
 			}
+
+			for (size_t i = 0; i < roofResult.size(); i++) {
+				cv::Point temp(static_cast<int>(std::round(roofResult[i].x)), static_cast<int>(std::round(roofResult[i].y)));
+				
+				if (i < precisionVal)
+					circle(resImage, temp, 1, point_color, 2); // BGR
+				else 
+					circle(resImage, temp, 1, point_color2, 2); // BGR
+			}
+
 			UtilsCV::Show(resImage);
 		}
 
@@ -433,7 +439,7 @@ void Program::Execute() {
 		std::cout << "Mesh Done: " << building->GetCodiceOggetto() << std::endl;
 
 		if (SHOW_RESULT) {
-			cv::Mat resImage = cv::Mat::zeros(cv::Size(br.size(), br[0].size()), CV_MAKETYPE(CV_8U, 3));
+			cv::Mat resImage = cv::Mat(cv::Size(br.size(), br[0].size()), CV_8UC3, cv::Scalar(255,255,255));
 			for (size_t i = 0; i < roofResult.size(); i++) {
 				cv::Point temp(static_cast<int>(std::round(roofResult[i].x)), static_cast<int>(std::round(roofResult[i].y)));
 				circle(resImage, temp, 0.1, cv::Scalar(0, 255, 0), 2); // BGR

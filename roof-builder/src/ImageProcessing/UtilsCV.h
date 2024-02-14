@@ -1,6 +1,6 @@
 #pragma once
 
-#define VIEW_SCALE 1.0
+#define VIEW_SCALE 2.0
 
 #include <vector>
 #include <math.h>
@@ -137,7 +137,7 @@ public:
 
     static void Show(cv::Mat& image, float scale = VIEW_SCALE) {
         cv::Mat res;
-        cv::resize(image, res, cv::Size(), scale, scale, cv::INTER_LINEAR);
+        cv::resize(image, res, cv::Size(), scale, scale, cv::INTER_CUBIC);
         cv::imshow("Result", res);
 
         cv::waitKey(0);
@@ -149,7 +149,7 @@ public:
         cv::Mat image = GetImage(mat, method);
 
         cv::Mat res;
-        cv::resize(image, res, cv::Size(), scale, scale, cv::INTER_LINEAR);
+        cv::resize(image, res, cv::Size(), scale, scale, cv::INTER_CUBIC);
         cv::imshow("Result", res);
 
         cv::waitKey(0);
@@ -185,17 +185,17 @@ public:
             if (unit->IsFinalUnit()) {
                 m_ResultPoint = unit->Finalize(m_Image, maxFeatures);
                 if (m_ShowSteps) {
-                    cv::Mat tempImg = cv::Mat::zeros(m_Image.size(), CV_MAKETYPE(CV_8U, 3));
+                    cv::Mat tempImg = cv::Mat(m_Image.size(), CV_8UC3, cv::Scalar(255, 255, 255));
 
                     for (int i = 0; i < m_Image.rows; i++) {
                         for (int j = 0; j < m_Image.cols; j++) {
                             if (m_Image.at<uchar>(i, j) > 0) {
-                                tempImg.at<cv::Vec3b>(i, j) = cv::Vec3b(0, 0, 255); // BGR
+                                tempImg.at<cv::Vec3b>(i, j) = cv::Vec3b(0, 0, 0); // BGR
                             }
                         }
                     }
                     for (size_t i = 0; i < m_ResultPoint.size(); i++) {
-                        circle(tempImg, m_ResultPoint[i], 0.1, cv::Scalar(0, 255, 0), 2); // BGR
+                        circle(tempImg, m_ResultPoint[i], 0.5, cv::Scalar(0, 0, 255), 2); // BGR
                     }
 
                     UtilsCV::Show(tempImg, VIEW_SCALE);
@@ -206,7 +206,6 @@ public:
                 if (m_ShowSteps)
                     UtilsCV::Show(m_Image, VIEW_SCALE);
             }
-            
         }
     }
 
