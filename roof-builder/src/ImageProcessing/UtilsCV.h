@@ -1,6 +1,7 @@
 #pragma once
 
 #define VIEW_SCALE 2.0
+#define SAVE false
 
 #include <vector>
 #include <math.h>
@@ -136,15 +137,38 @@ public:
         return image;
     }
 
+    static void ShowPoints(const std::vector<MyPoint>& targetPoints, float tol, int scale, bool filterZeros) {
+        float min_x = std::min_element(targetPoints.begin(), targetPoints.end(), [](MyPoint const a, MyPoint const b) { return a.x < b.x; })->x - tol;
+        float max_x = std::max_element(targetPoints.begin(), targetPoints.end(), [](MyPoint const a, MyPoint const b) { return a.x < b.x; })->x + tol;
+        float min_y = std::min_element(targetPoints.begin(), targetPoints.end(), [](MyPoint const a, MyPoint const b) { return a.y < b.y; })->y - tol;
+        float max_y = std::max_element(targetPoints.begin(), targetPoints.end(), [](MyPoint const a, MyPoint const b) { return a.y < b.y; })->y + tol;
+
+        int w = (int)(max_x - min_x) * scale;
+        int h = (int)(max_y - min_y) * scale;
+
+        cv::Mat image = cv::Mat::zeros(h, w, CV_8UC3);
+
+        for (const auto& point : targetPoints) {
+            int x = ((point.x - min_x) / (max_x - min_x)) * w;
+            int y = h - ((point.y - min_y) / (max_y - min_y)) * h;
+
+            if (filterZeros && point.z > 10.0)
+                cv::circle(image, cv::Point(x, y), 0.1, cv::Scalar(0, 255, 0), -1);
+        }
+
+        Show(image);
+    }
+
     static void Show(cv::Mat& image, float scale = VIEW_SCALE) {
         cv::Mat res;
         cv::resize(image, res, cv::Size(), scale, scale, cv::INTER_CUBIC);
 
-        if (res.channels() == 1 && res.at<uchar>(0, 0) != 255) {
-            res = 255 - res;
+        if (SAVE) {
+            if (res.channels() == 1 && res.at<uchar>(0, 0) != 255) {
+                res = 255 - res;
+            }
+            Save("out", res);
         }
-
-        Save("out", res);
 
         cv::imshow("Result", res);
 

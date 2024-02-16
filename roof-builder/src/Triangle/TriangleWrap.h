@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <vector>
+#include <list>
 #include "../MyPoint.h"
 extern "C" {
 	#include "triangle.h"
@@ -120,4 +121,89 @@ private:
 	TriangleIO m_Out;
 	std::vector<MyTriangle2> m_Triangles;
 	std::vector<std::vector<int>> m_Indices;
+};
+
+
+class UtilsTriangle {
+private:
+	static int FindNextVert(std::list<std::pair<int, int>>& v, int num) {
+		for (auto it = v.begin(); it != v.end(); /* no increment here */) {
+			//std::cout << "searching " << num << std::endl;
+			//std::cout << "current: " << it->first << " - " << it->second << std::endl;
+			if (it->first == num) {
+				int temp = it->second;
+				v.erase(it);
+				return temp;
+			}
+			else if (it->second == num) {
+				int temp = it->first;
+				it = v.erase(it);
+				return temp;
+			}
+			else {
+				++it; // only increment if we didn't erase
+			}
+		}
+
+		return -1;
+	}
+
+public:
+	static int FindPrimaryVert(std::list<std::pair<int, int>>& v, int num, int t) {
+		int pos = num;
+		bool found = false;
+
+		for (auto it = v.begin(); !found && it != v.end(); /* no increment here */) {
+			//std::cout << "searching " << pos << std::endl;
+			//std::cout << "current: " << it->first << " - " << it->second << std::endl;
+			if (it->first == pos) {
+				//std::cout << "found " << pos << " with " << it->second << std::endl;
+				pos = it->second;
+
+				// remove this entry from v
+				it = v.erase(it);
+				if (pos < t) {
+					found = true;
+					return pos;
+				}
+			}
+			else if (it->second == pos) {
+				//std::cout << "found " << pos << " with " << it->first << std::endl;
+				pos = it->first;
+
+				// remove this entry from v
+				it = v.erase(it);
+				if (pos < t) {
+					found = true;
+					return pos;
+				}
+			}
+			else {
+				++it; // only increment if we didn't erase
+			}
+
+			if (it == v.end()) {
+				it = v.begin();
+			}
+		}
+
+		return -1;
+	}
+
+	
+	static std::vector<std::pair<int, int>> Polygonize(std::list<std::pair<int, int>>& list) {
+		std::vector<std::pair<int, int>> res;
+		int init = list.front().first;
+		int temp = init;
+		while (!list.empty()) { // no increment here
+			int sec = FindNextVert(list, temp);
+			res.push_back({ temp, sec });
+			temp = sec;
+			if (sec == init) { // there are some dirty edges
+				return res;
+			}
+		}
+
+		return res;
+	}
 };

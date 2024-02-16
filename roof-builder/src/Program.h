@@ -16,7 +16,6 @@
 #include "Dbscan.h"
 #include "ImageProcessing/UtilsCV.h"
 #include "Readers/ReaderCsv.h"
-#include "Printer.h"
 #include "Triangle/TriangleWrap.h"
 #include "Exporter.h"
 
@@ -29,85 +28,6 @@
 #define SELECT_METHOD 0 //0 single building, 1 single las, 2 all las in dir
 
 #define LAS_PATH ASSETS_PATH "las/"
-
-int findPrimaryVert(std::list<std::pair<int, int>>& v, int num, int t) {
-	int pos = num;
-	bool found = false;
-
-	for (auto it = v.begin(); !found && it != v.end(); /* no increment here */) {
-		//std::cout << "searching " << pos << std::endl;
-		//std::cout << "current: " << it->first << " - " << it->second << std::endl;
-		if (it->first == pos) {
-			//std::cout << "found " << pos << " with " << it->second << std::endl;
-			pos = it->second;
-
-			// remove this entry from v
-			it = v.erase(it);
-			if (pos < t) {
-				found = true;
-				return pos;
-			}
-		}
-		else if (it->second == pos) {
-			//std::cout << "found " << pos << " with " << it->first << std::endl;
-			pos = it->first;
-
-			// remove this entry from v
-			it = v.erase(it);
-			if (pos < t) {
-				found = true;
-				return pos;
-			}
-		}
-		else {
-			++it; // only increment if we didn't erase
-		}
-
-		if (it == v.end()) {
-			it = v.begin();
-		}
-	}
-
-	return -1;
-}
-
-int findNextVert(std::list<std::pair<int, int>>& v, int num) {
-	for (auto it = v.begin(); it != v.end(); /* no increment here */) {
-		//std::cout << "searching " << num << std::endl;
-		//std::cout << "current: " << it->first << " - " << it->second << std::endl;
-		if (it->first == num) {
-			int temp = it->second;
-			v.erase(it);
-			return temp;
-		}
-		else if (it->second == num) {
-			int temp = it->first;
-			it = v.erase(it);
-			return temp;	
-		}
-		else {
-			++it; // only increment if we didn't erase
-		}
-	}
-
-	return -1;
-}
-
-std::vector<std::pair<int, int>> polygonize(std::list<std::pair<int, int>>& list) {
-	std::vector<std::pair<int, int>> res;
-	int init = list.front().first;
-	int temp = init;
-	while (!list.empty()) { // no increment here
-		int sec = findNextVert(list, temp);
-		res.push_back({ temp, sec });
-		temp = sec;
-		if (sec == init) { // there are some dirty edges
-			return res;
-		}
-	}
-
-	return res;
-}
 
 class Program {
 public:
@@ -136,15 +56,15 @@ void Program::Execute() {
 
 	std::cout << "### Starting Data Load Process..." << std::endl;
 
-	//uint16_t select = 52578; //l-shape
+	uint16_t select = 52578; //l-shape
 	//uint16_t select = 24069; //top-t
-	//std::string selectLas = "32_684000_4930000.las";
+	std::string selectLas = "32_684000_4930000.las";
 
 	//uint16_t select = 47924; //dozza
 	//std::string selectLas = "32_685000_4930000.las";
 
-	uint16_t select = 24921; //coso strano ma bellinof
-	std::string selectLas = "32_686000_4928500.las";
+	//uint16_t select = 24921; //coso strano ma bellino
+	//std::string selectLas = "32_686000_4928500.las";
 
 	std::vector<std::string> lasNames;
 
@@ -399,7 +319,7 @@ void Program::Execute() {
 					externalEdges.erase(curr);  // delete this entry from external edges and move to next
 				}
 				else {
-					int temp = findPrimaryVert(externalEdges, curr->first, precisionVal);
+					int temp = UtilsTriangle::FindPrimaryVert(externalEdges, curr->first, precisionVal);
 					if (temp > 0 && temp != curr->first) {
 						cleanEdges.push_back({ curr->first, temp });
 					}
@@ -458,7 +378,7 @@ void Program::Execute() {
 			}
 		}
 
-		std::vector<std::pair<int, int>> outEdge = polygonize(cleanEdges);
+		std::vector<std::pair<int, int>> outEdge = UtilsTriangle::Polygonize(cleanEdges);
 
 		triWrap.Initialize();
 		triWrap.UploadPoints(roofResult, ridgeResult, outEdge);
