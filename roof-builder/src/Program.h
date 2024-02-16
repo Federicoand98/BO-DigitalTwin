@@ -21,11 +21,11 @@
 
 #define DEBUG 1
 
-#define SHOW_RESULT true
-#define SHOW_STEPS true
-#define SHOW_CLEAN_EDGES true 
+#define SHOW_RESULT false
+#define SHOW_STEPS false
+#define SHOW_CLEAN_EDGES false 
 
-#define SELECT_METHOD 0 //0 single building, 1 single las, 2 all las in dir
+#define SELECT_METHOD 1 //0 single building, 1 single las, 2 all las in dir
 
 #define LAS_PATH ASSETS_PATH "las/"
 
@@ -58,10 +58,10 @@ void Program::Execute() {
 
 	uint16_t select = 52578; //l-shape
 	//uint16_t select = 24069; //top-t
-	std::string selectLas = "32_684000_4930000.las";
+	//std::string selectLas = "32_684000_4930000.las";
 
 	//uint16_t select = 47924; //dozza
-	//std::string selectLas = "32_685000_4930000.las";
+	std::string selectLas = "32_685000_4930000.las";
 
 	//uint16_t select = 24921; //coso strano ma bellino
 	//std::string selectLas = "32_686000_4928500.las";
@@ -125,6 +125,7 @@ void Program::Execute() {
 
 #if DEBUG
 	int c = 0;
+	int tot = 0;
 
 	for (std::shared_ptr<Building> building : buildings) {
 		std::vector<MyPoint> targetPoints;
@@ -158,6 +159,7 @@ void Program::Execute() {
 		if (targetPoints.size() <= 20)
 			continue;
 
+		tot++;
 		std::cout << "Edificio: " << c << "/" << buildings.size() << std::endl;
 		std::cout << "##### Cod. Oggetto: " << building->GetCodiceOggetto() << std::endl;
 
@@ -423,6 +425,7 @@ void Program::Execute() {
 			UtilsCV::Show(resImage);
 		}
 	}
+	std::cout << "### Number of shapes:" << tot << std::endl;
 #else
 	int size = buildings.size();
 	int c = 0;
@@ -554,7 +557,7 @@ void Program::Execute() {
 						externalEdges.erase(curr);  // delete this entry from external edges and move to next
 					}
 					else {
-						int temp = findPrimaryVert(externalEdges, curr->first, precisionVal);
+						int temp = UtilsTriangle::FindPrimaryVert(externalEdges, curr->first, precisionVal);
 						if (temp > 0 && temp != curr->first) {
 							cleanEdges.push_back({ curr->first, temp });
 						}
@@ -584,7 +587,7 @@ void Program::Execute() {
 				}
 			}
 
-			std::vector<std::pair<int, int>> outEdge = polygonize(cleanEdges);
+			std::vector<std::pair<int, int>> outEdge = UtilsTriangle::Polygonize(cleanEdges);
 
 			triWrap.Initialize();
 			triWrap.UploadPoints(roofResult, ridgeResult, outEdge);
@@ -616,7 +619,6 @@ void Program::Execute() {
 	auto minutes = std::chrono::duration_cast<std::chrono::minutes>(duration);
 	duration -= minutes;
 	auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
-
 
 	std::cout << "### Computation time: " << minutes.count() << " min and " << seconds.count() << " sec" << std::endl;
 
