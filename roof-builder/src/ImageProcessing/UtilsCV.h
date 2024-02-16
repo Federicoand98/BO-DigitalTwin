@@ -5,6 +5,7 @@
 #include <vector>
 #include <math.h>
 #include <opencv2/opencv.hpp>
+#include <filesystem>
 #include "ImageProcessingUnit.h"
 #include "../MyPoint.h"
 
@@ -138,6 +139,13 @@ public:
     static void Show(cv::Mat& image, float scale = VIEW_SCALE) {
         cv::Mat res;
         cv::resize(image, res, cv::Size(), scale, scale, cv::INTER_CUBIC);
+
+        if (res.channels() == 1 && res.at<uchar>(0, 0) != 255) {
+            res = 255 - res;
+        }
+
+        Save("out", res);
+
         cv::imshow("Result", res);
 
         cv::waitKey(0);
@@ -155,6 +163,22 @@ public:
         cv::waitKey(0);
         cv::destroyAllWindows();
         cv::waitKey(1);
+    }
+
+    static void Save(std::string name, cv::Mat& image) {
+        int i = 1;
+
+        std::string ext = ".png";
+
+        std::string output_filename = OUTPUT_PATH "//img//" + name + "_" + std::to_string(i) + ext;
+
+        while (std::filesystem::exists(output_filename)) {
+            i += 1;
+            output_filename = OUTPUT_PATH "//img//" + name + "_" + std::to_string(i) + ext;
+        }
+
+        // Salva l'immagine con il nuovo nome del file
+        cv::imwrite(output_filename, image);
     }
 };
 
@@ -195,7 +219,7 @@ public:
                         }
                     }
                     for (size_t i = 0; i < m_ResultPoint.size(); i++) {
-                        circle(tempImg, m_ResultPoint[i], 0.5, cv::Scalar(0, 0, 255), 2); // BGR
+                        circle(tempImg, m_ResultPoint[i], 1, cv::Scalar(224, 183, 74), 2); // BGR
                     }
 
                     UtilsCV::Show(tempImg, VIEW_SCALE);

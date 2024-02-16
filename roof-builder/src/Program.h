@@ -22,8 +22,8 @@
 
 #define DEBUG 1
 
-#define SHOW_RESULT false
-#define SHOW_STEPS false
+#define SHOW_RESULT true
+#define SHOW_STEPS true
 #define SHOW_CLEAN_EDGES true 
 
 #define SELECT_METHOD 0 //0 single building, 1 single las, 2 all las in dir
@@ -136,11 +136,15 @@ void Program::Execute() {
 
 	std::cout << "### Starting Data Load Process..." << std::endl;
 
-	uint16_t select = 52578;
-	//uint16_t select = 24069;
+	//uint16_t select = 52578; //l-shape
+	//uint16_t select = 24069; //top-t
+	//std::string selectLas = "32_684000_4930000.las";
 
-	//uint16_t select = 837;
-	std::string selectLas = "32_684000_4930000.las";
+	//uint16_t select = 47924; //dozza
+	//std::string selectLas = "32_685000_4930000.las";
+
+	uint16_t select = 24921; //coso strano ma bellinof
+	std::string selectLas = "32_686000_4928500.las";
 
 	std::vector<std::string> lasNames;
 
@@ -269,13 +273,35 @@ void Program::Execute() {
 		std::vector<MyTriangle2> tris2 = triWrap.Triangulate();
 		std::vector<std::vector<int>> indices = triWrap.GetIndices();
 
+		cv::Scalar delaunay_color(224, 9, 198);
+		cv::Scalar point_ext(224, 183, 74);
+		cv::Scalar point_ext_d(38, 135, 224);
+		cv::Scalar point_ridge(45, 224, 134);
+
+		if (SHOW_STEPS) {
+			cv::Mat resImage = cv::Mat(cv::Size(br.size(), br[0].size()), CV_MAKETYPE(CV_8U, 3), cv::Scalar(255, 255, 255));
+
+			for (int i = 0; i < tris2.size(); i++) {
+				cv::line(resImage, cv::Point(tris2[i].p1.x, tris2[i].p1.y), cv::Point(tris2[i].p2.x, tris2[i].p2.y), delaunay_color, 1);
+				cv::line(resImage, cv::Point(tris2[i].p2.x, tris2[i].p2.y), cv::Point(tris2[i].p3.x, tris2[i].p3.y), delaunay_color, 1);
+				cv::line(resImage, cv::Point(tris2[i].p1.x, tris2[i].p1.y), cv::Point(tris2[i].p3.x, tris2[i].p3.y), delaunay_color, 1);
+			}
+
+			for (size_t i = 0; i < roofResult.size(); i++) {
+				cv::Point temp(static_cast<int>(std::round(roofResult[i].x)), static_cast<int>(std::round(roofResult[i].y)));
+				circle(resImage, temp, 1, point_ext, 2); // BGR
+			}
+
+			UtilsCV::Show(resImage);
+		}
+
 		std::vector<MyTriangle> tempTris;
+		cv::Mat cFill = roofEdgeProcesser->GetCFill();
 		for (int i = 0; i < tris2.size(); /* no increment here */) {
 			MyTriangle2 tri2 = tris2[i];
 			float c_x = (tri2.p1.x + tri2.p2.x + tri2.p3.x) / 3.0;
 			float c_y = (tri2.p1.y + tri2.p2.y + tri2.p3.y) / 3.0;
 
-			cv::Mat cFill = roofEdgeProcesser->GetCFill();
 			if (cFill.at<uchar>(c_y, c_x) != 0) {
 				MyPoint p1 = grid.GetGridPointCoord(tri2.p1.x, tri2.p1.y);
 				MyPoint p2 = grid.GetGridPointCoord(tri2.p2.x, tri2.p2.y);
@@ -290,6 +316,23 @@ void Program::Execute() {
 				tris2.erase(tris2.begin() + i);
 				indices.erase(indices.begin() + i);
 			}
+		}
+
+		if (SHOW_STEPS) {
+			cv::Mat resImage = cv::Mat(cv::Size(br.size(), br[0].size()), CV_MAKETYPE(CV_8U, 3), cv::Scalar(255, 255, 255));
+
+			for (int i = 0; i < tris2.size(); i++) {
+				cv::line(resImage, cv::Point(tris2[i].p1.x, tris2[i].p1.y), cv::Point(tris2[i].p2.x, tris2[i].p2.y), delaunay_color, 1);
+				cv::line(resImage, cv::Point(tris2[i].p2.x, tris2[i].p2.y), cv::Point(tris2[i].p3.x, tris2[i].p3.y), delaunay_color, 1);
+				cv::line(resImage, cv::Point(tris2[i].p1.x, tris2[i].p1.y), cv::Point(tris2[i].p3.x, tris2[i].p3.y), delaunay_color, 1);
+			}
+
+			for (size_t i = 0; i < roofResult.size(); i++) {
+				cv::Point temp(static_cast<int>(std::round(roofResult[i].x)), static_cast<int>(std::round(roofResult[i].y)));
+				circle(resImage, temp, 1, point_ext, 2); // BGR
+			}
+
+			UtilsCV::Show(resImage);
 		}
 
 		std::map<std::pair<int, int>, int> edgeFrequency;
@@ -313,9 +356,6 @@ void Program::Execute() {
 
 		//std::cout << "number of ext edges: " << externalEdges.size() << std::endl;
 
-		cv::Scalar delaunay_color(184, 32, 15);
-		cv::Scalar point_color(15, 15, 185);
-		cv::Scalar point_color2(15, 185, 15);
 
 		if (SHOW_CLEAN_EDGES) {
 			cv::Mat resImage = cv::Mat(cv::Size(br.size(), br[0].size()), CV_MAKETYPE(CV_8U, 3), cv::Scalar(255,255,255));
@@ -329,7 +369,7 @@ void Program::Execute() {
 
 			for (size_t i = 0; i < roofResult.size(); i++) {
 				cv::Point temp(static_cast<int>(std::round(roofResult[i].x)), static_cast<int>(std::round(roofResult[i].y)));
-				circle(resImage, temp, 1, point_color, 2); // BGR
+				circle(resImage, temp, 1, point_ext, 2); // BGR
 			}
 
 			UtilsCV::Show(resImage);
@@ -391,9 +431,9 @@ void Program::Execute() {
 				cv::Point temp(static_cast<int>(std::round(roofResult[i].x)), static_cast<int>(std::round(roofResult[i].y)));
 				
 				if (i < precisionVal)
-					circle(resImage, temp, 1, point_color, 2); // BGR
+					circle(resImage, temp, 1, point_ext, 2); // BGR
 				else 
-					circle(resImage, temp, 1, point_color2, 2); // BGR
+					circle(resImage, temp, 1, point_ext_d, 2); // BGR
 			}
 
 			UtilsCV::Show(resImage);
@@ -438,27 +478,28 @@ void Program::Execute() {
 		meshes.push_back(MyMesh(triangles));
 		std::cout << "Mesh Done: " << building->GetCodiceOggetto() << std::endl;
 
+
 		if (SHOW_RESULT) {
 			cv::Mat resImage = cv::Mat(cv::Size(br.size(), br[0].size()), CV_8UC3, cv::Scalar(255,255,255));
-			for (size_t i = 0; i < roofResult.size(); i++) {
-				cv::Point temp(static_cast<int>(std::round(roofResult[i].x)), static_cast<int>(std::round(roofResult[i].y)));
-				circle(resImage, temp, 0.1, cv::Scalar(0, 255, 0), 2); // BGR
-			}
-			for (size_t i = 0; i < ridgeResult.size(); i++) {
-				cv::Point temp(static_cast<int>(std::round(ridgeResult[i].x)), static_cast<int>(std::round(ridgeResult[i].y)));
-				circle(resImage, temp, 0.1, cv::Scalar(255, 0, 0), 2); // BGR
-			}
-			cv::Scalar delaunay_color(128, 0, 128);
-
 			for (const auto& triangle : triangles2) {
 				cv::Point pt1(triangle.p1.x, triangle.p1.y);
 				cv::Point pt2(triangle.p2.x, triangle.p2.y);
 				cv::Point pt3(triangle.p3.x, triangle.p3.y);
 
-				cv::line(resImage, pt1, pt2, delaunay_color, 1);
-				cv::line(resImage, pt2, pt3, delaunay_color, 1);
-				cv::line(resImage, pt3, pt1, delaunay_color, 1);
+				cv::line(resImage, pt1, pt2, delaunay_color, 1.5);
+				cv::line(resImage, pt2, pt3, delaunay_color, 1.5);
+				cv::line(resImage, pt3, pt1, delaunay_color, 1.5);
 			}
+
+			for (size_t i = 0; i < roofResult.size(); i++) {
+				cv::Point temp(static_cast<int>(std::round(roofResult[i].x)), static_cast<int>(std::round(roofResult[i].y)));
+				circle(resImage, temp, 1, point_ext, 2); // BGR
+			}
+			for (size_t i = 0; i < ridgeResult.size(); i++) {
+				cv::Point temp(static_cast<int>(std::round(ridgeResult[i].x)), static_cast<int>(std::round(ridgeResult[i].y)));
+				circle(resImage, temp, 1, point_ridge, 2); // BGR
+			}
+
 			UtilsCV::Show(resImage);
 		}
 	}
@@ -536,12 +577,12 @@ void Program::Execute() {
 			std::vector<std::vector<int>> indices = triWrap.GetIndices();
 
 			std::vector<MyTriangle> tempTris;
+			cv::Mat cFill = roofEdgeProcesser->GetCFill();
 			for (int i = 0; i < tris2.size(); /* no increment here */) {
 				MyTriangle2 tri2 = tris2[i];
 				float c_x = (tri2.p1.x + tri2.p2.x + tri2.p3.x) / 3.0;
 				float c_y = (tri2.p1.y + tri2.p2.y + tri2.p3.y) / 3.0;
 
-				cv::Mat cFill = roofEdgeProcesser->GetCFill();
 				if (cFill.at<uchar>(c_y, c_x) != 0) {
 					MyPoint p1 = grid.GetGridPointCoord(tri2.p1.x, tri2.p1.y);
 					MyPoint p2 = grid.GetGridPointCoord(tri2.p2.x, tri2.p2.y);
