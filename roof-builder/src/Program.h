@@ -20,6 +20,7 @@
 #include "Exporter.h"
 
 #define DEBUG 1
+#define PRINT_TEMP false
 
 #define SHOW_RESULT false
 #define SHOW_STEPS false
@@ -56,15 +57,18 @@ void Program::Execute() {
 
 	std::cout << "### Starting Data Load Process..." << std::endl;
 
-	uint16_t select = 52578; //l-shape
-	//uint16_t select = 24069; //top-t
-	//std::string selectLas = "32_684000_4930000.las";
+	//uint16_t select = 52578; //l-shape
+	uint16_t select = 24069; //top-t
+
+	std::string selectLas = "32_684000_4930000.las";
 
 	//uint16_t select = 47924; //dozza
-	std::string selectLas = "32_685000_4930000.las";
+	//std::string selectLas = "32_685000_4930000.las";
 
 	//uint16_t select = 24921; //coso strano ma bellino
 	//std::string selectLas = "32_686000_4928500.las";
+
+	//std::string selectLas = "32_686000_4929500.las";
 
 	std::vector<std::string> lasNames;
 
@@ -127,9 +131,23 @@ void Program::Execute() {
 	int c = 0;
 	int tot = 0;
 
+	std::chrono::duration<double> time_acc_filter(0);
+	std::chrono::duration<double> time_acc_cluster(0);
+	std::chrono::duration<double> time_acc_grid(0);
+	std::chrono::duration<double> time_acc_edge(0);
+	std::chrono::duration<double> time_acc_triangU(0);
+	std::chrono::duration<double> time_acc_ext(0);
+	std::chrono::duration<double> time_acc_poly(0);
+	std::chrono::duration<double> time_acc_feat(0);
+	std::chrono::duration<double> time_acc_prune(0);
+	std::chrono::duration<double> time_acc_triangC(0);
+	std::chrono::duration<double> time_acc_coord(0);
+
 	for (std::shared_ptr<Building> building : buildings) {
 		std::vector<MyPoint> targetPoints;
 		c++;
+
+		auto st = std::chrono::high_resolution_clock::now();
 		
 		auto geomFactory = geos::geom::GeometryFactory::create();
 		
@@ -159,24 +177,40 @@ void Program::Execute() {
 		if (targetPoints.size() <= 20)
 			continue;
 
+		if (SHOW_STEPS) {
+			UtilsCV::ShowPoints(targetPoints, 2.0, 10.0, false);
+		}
+
+		time_acc_filter += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - st);
+
 		tot++;
-		std::cout << "Edificio: " << c << "/" << buildings.size() << std::endl;
-		std::cout << "##### Cod. Oggetto: " << building->GetCodiceOggetto() << std::endl;
-
 		int buildingCornerNumb = building->GetPolygon()->getNumPoints() - 1;
-		std::cout << "Corners number: " << buildingCornerNumb << std::endl;
+		if (PRINT_TEMP) {
+			std::cout << "Edificio: " << c << "/" << buildings.size() << std::endl;
+			std::cout << "##### Cod. Oggetto: " << building->GetCodiceOggetto() << std::endl;
+			std::cout << "Corners number: " << buildingCornerNumb << std::endl;
+			std::cout << "Points found: " << targetPoints.size() << std::endl;
+		}
 
-		std::cout << "Points found: " << targetPoints.size() << std::endl;
+		st = std::chrono::high_resolution_clock::now();
 
 		std::vector<MyPoint> mainCluster = Dbscan::GetMainCluster(std::span(targetPoints), 0.8, 10);
 
+		time_acc_cluster += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - st);
+
 		if (mainCluster.size() == 0)
 			continue;
+		
+		st = std::chrono::high_resolution_clock::now();
 
 		Grid grid;
 		grid.Init(mainCluster, 0.1, 2.0, 0.2);
 		grid.FillHoles(3, 3);
 		targetPoints.clear();
+
+		time_acc_grid += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - st);
+
+		st = std::chrono::high_resolution_clock::now();
 
 		std::vector<std::vector<float>> br = grid.GetBooleanRoof();
 
@@ -186,14 +220,20 @@ void Program::Execute() {
 		roofEdgeProcesser->Process(buildingCornerNumb*safetyFactor);
 		std::vector<MyPoint2> roofResult = roofEdgeProcesser->GetOutput();
 
+		time_acc_edge += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - st);
+
 		if (roofResult.size() < 3) // can't triangulate
 			continue;
+
+		st = std::chrono::high_resolution_clock::now();
 
 		TriangleWrapper triWrap;
 		triWrap.Initialize();
 		triWrap.UploadPoints(roofResult);
 		std::vector<MyTriangle2> tris2 = triWrap.Triangulate();
 		std::vector<std::vector<int>> indices = triWrap.GetIndices();
+
+		time_acc_triangU += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - st);
 
 		cv::Scalar delaunay_color(224, 9, 198);
 		cv::Scalar point_ext(224, 183, 74);
@@ -216,6 +256,8 @@ void Program::Execute() {
 
 			UtilsCV::Show(resImage);
 		}
+
+		st = std::chrono::high_resolution_clock::now();
 
 		std::vector<MyTriangle> tempTris;
 		cv::Mat cFill = roofEdgeProcesser->GetCFill();
@@ -276,8 +318,9 @@ void Program::Execute() {
 			}
 		}
 
+		time_acc_ext += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - st);
+		
 		//std::cout << "number of ext edges: " << externalEdges.size() << std::endl;
-
 
 		if (SHOW_CLEAN_EDGES) {
 			cv::Mat resImage = cv::Mat(cv::Size(br.size(), br[0].size()), CV_MAKETYPE(CV_8U, 3), cv::Scalar(255,255,255));
@@ -296,6 +339,8 @@ void Program::Execute() {
 
 			UtilsCV::Show(resImage);
 		}
+
+		st = std::chrono::high_resolution_clock::now();
 
 		int precisionVal = buildingCornerNumb * 1.8;
 		if (precisionVal > externalEdges.size())
@@ -361,12 +406,21 @@ void Program::Execute() {
 			UtilsCV::Show(resImage);
 		}
 
+		std::vector<std::pair<int, int>> outEdge = UtilsTriangle::Polygonize(cleanEdges);
+
+		time_acc_poly += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - st);
+
 		roofResult.erase(roofResult.begin() + precisionVal, roofResult.end());
+
+		st = std::chrono::high_resolution_clock::now();
 
 		std::vector<std::vector<float>> lm = grid.GetLocalMax(11);
 		std::shared_ptr<ImageProcesser> ridgeEdgeProcesser = ImageProcesserFactory::CreateRidgePipeline(lm, SHOW_STEPS);
 		ridgeEdgeProcesser->Process();
 		std::vector<MyPoint2> ridgeResult = ridgeEdgeProcesser->GetOutput();
+
+		time_acc_feat += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - st);
+		st = std::chrono::high_resolution_clock::now();
 
 		for (auto it1 = ridgeResult.begin(); it1 != ridgeResult.end(); ++it1) {
 			for (auto it2 = roofResult.begin(); it2 != roofResult.end(); ++it2) {
@@ -379,12 +433,17 @@ void Program::Execute() {
 				}
 			}
 		}
+		time_acc_prune += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - st);
 
-		std::vector<std::pair<int, int>> outEdge = UtilsTriangle::Polygonize(cleanEdges);
+		st = std::chrono::high_resolution_clock::now();
 
 		triWrap.Initialize();
 		triWrap.UploadPoints(roofResult, ridgeResult, outEdge);
 		std::vector<MyTriangle2> triangles2 = triWrap.TriangulateConstrained();
+
+		time_acc_triangC += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - st);
+
+		st = std::chrono::high_resolution_clock::now();
 
 		std::vector<MyTriangle> triangles;
 		for (int i = 0; i < triangles2.size(); ++i) {
@@ -397,9 +456,12 @@ void Program::Execute() {
 			triangles.push_back({ p1, p2, p3 });
 		}
 
-		meshes.push_back(MyMesh(triangles));
-		std::cout << "Mesh Done: " << building->GetCodiceOggetto() << std::endl;
+		time_acc_coord += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - st);
 
+		meshes.push_back(MyMesh(triangles));
+
+		if (PRINT_TEMP)
+			std::cout << "Mesh Done: " << building->GetCodiceOggetto() << std::endl;
 
 		if (SHOW_RESULT) {
 			cv::Mat resImage = cv::Mat(cv::Size(br.size(), br[0].size()), CV_8UC3, cv::Scalar(255,255,255));
@@ -425,7 +487,49 @@ void Program::Execute() {
 			UtilsCV::Show(resImage);
 		}
 	}
-	std::cout << "### Number of shapes:" << tot << std::endl;
+	std::cout << "### Number of shapes: " << tot << "\n" << std::endl;
+
+	if (tot > 0) {
+		auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start);
+
+		double avgT = (dur.count()) / tot;
+		double avgTimeFilter = (time_acc_filter.count() * 1000) / tot;
+		double avgTimeCluster = (time_acc_cluster.count() * 1000) / tot;
+		double avgTimeGrid = (time_acc_grid.count() * 1000) / tot;
+		double avgTimeTriangU = (time_acc_triangU.count() * 1000) / tot;
+		double avgTimeExtFilt = (time_acc_ext.count() * 1000) / tot;
+		double avgTimePoly = (time_acc_poly.count() * 1000) / tot;
+		double avgTimeFeat = (time_acc_feat.count() * 1000) / tot;
+		double avgTimePrune = (time_acc_prune.count() * 1000) / tot;
+		double avgTimeTriangC = (time_acc_triangC.count() * 1000) / tot;
+		double avgTimeCoord = (time_acc_coord.count() * 1000) / tot;
+
+		double total = avgT;
+		double percTimeFilter = (avgTimeFilter / total) * 100;
+		double percTimeCluster = (avgTimeCluster / total) * 100;
+		double percTimeGrid = (avgTimeGrid / total) * 100;
+		double percTimeTriangU = (avgTimeTriangU / total) * 100;
+		double percTimeExtFilt = (avgTimeExtFilt / total) * 100;
+		double percTimePoly = (avgTimePoly / total) * 100;
+		double percTimeFeat = (avgTimeFeat / total) * 100;
+		double percTimePrune = (avgTimePrune / total) * 100;
+		double percTimeTriangC = (avgTimeTriangC / total) * 100;
+		double percTimeCoord = (avgTimeCoord / total) * 100;
+
+		std::cout << "### Avg. Tot time: " << avgT << " ms\n\n";
+
+		std::cout << "### Avg. Time filter: " << avgTimeFilter << " ms (" << percTimeFilter << "%)\n";
+		std::cout << "### Avg. Time cluster: " << avgTimeCluster << " ms (" << percTimeCluster << "%)\n";
+		std::cout << "### Avg. Time grid: " << avgTimeGrid << " ms (" << percTimeGrid << "%)\n";
+		std::cout << "### Avg. Time triang unconstrained: " << avgTimeTriangU << " ms (" << percTimeTriangU << "%)\n";
+		std::cout << "### Avg. Time ext filt: " << avgTimeExtFilt << " ms (" << percTimeExtFilt << "%)\n";
+		std::cout << "### Avg. Time poly: " << avgTimePoly << " ms (" << percTimePoly << "%)\n";
+		std::cout << "### Avg. Time feat: " << avgTimeFeat << " ms (" << percTimeFeat << "%)\n";
+		std::cout << "### Avg. Time prune: " << avgTimePrune << " ms (" << percTimePrune << "%)\n";
+		std::cout << "### Avg. Time triang constrained: " << avgTimeTriangC << " ms (" << percTimeTriangC << "%)\n";
+		std::cout << "### Avg. Time coord: " << avgTimeCoord << " ms (" << percTimeCoord << "%)\n\n";
+	}
+
 #else
 	int size = buildings.size();
 	int c = 0;

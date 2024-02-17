@@ -138,22 +138,40 @@ public:
     }
 
     static void ShowPoints(const std::vector<MyPoint>& targetPoints, float tol, int scale, bool filterZeros) {
+        if (targetPoints.empty()) return;
+
         float min_x = std::min_element(targetPoints.begin(), targetPoints.end(), [](MyPoint const a, MyPoint const b) { return a.x < b.x; })->x - tol;
         float max_x = std::max_element(targetPoints.begin(), targetPoints.end(), [](MyPoint const a, MyPoint const b) { return a.x < b.x; })->x + tol;
         float min_y = std::min_element(targetPoints.begin(), targetPoints.end(), [](MyPoint const a, MyPoint const b) { return a.y < b.y; })->y - tol;
         float max_y = std::max_element(targetPoints.begin(), targetPoints.end(), [](MyPoint const a, MyPoint const b) { return a.y < b.y; })->y + tol;
 
-        int w = (int)(max_x - min_x) * scale;
-        int h = (int)(max_y - min_y) * scale;
+        float min_z = std::numeric_limits<float>::max();
+        float max_z = std::numeric_limits<float>::lowest();
+
+        for (const auto& point : targetPoints) {
+            if (point.z > 0) { // Ignora z = 0
+                if (point.z < min_z) min_z = point.z;
+                if (point.z > max_z) max_z = point.z;
+            }
+        }
+
+        float range_x = max_x - min_x;
+        float range_y = max_y - min_y;
+        float max_range = std::max(range_x, range_y);
+
+        int w = (int)(max_range * scale);
+        int h = (int)(max_range * scale);
 
         cv::Mat image = cv::Mat::zeros(h, w, CV_8UC3);
 
         for (const auto& point : targetPoints) {
-            int x = ((point.x - min_x) / (max_x - min_x)) * w;
-            int y = h - ((point.y - min_y) / (max_y - min_y)) * h;
+            int x = ((point.x - min_x) / max_range) * w;
+            int y = h - ((point.y - min_y) / max_range) * h;
 
-            if (filterZeros && point.z > 10.0)
-                cv::circle(image, cv::Point(x, y), 0.1, cv::Scalar(0, 255, 0), -1);
+            if (!filterZeros || (filterZeros && point.z > 0)) {
+                RGBColor color = HeightToRainbow(point.z, min_z, max_z);
+                cv::circle(image, cv::Point(x, y), 1.0, cv::Vec3b(color.b, color.g, color.r), -1);
+            }
         }
 
         Show(image);
