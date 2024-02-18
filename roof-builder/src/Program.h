@@ -20,13 +20,13 @@
 #include "Exporter.h"
 
 #define DEBUG 1
-#define PRINT_TEMP false
+#define PRINT_TEMP true
 
 #define SHOW_RESULT false
 #define SHOW_STEPS false
 #define SHOW_CLEAN_EDGES false 
 
-#define SELECT_METHOD 1 //0 single building, 1 single las, 2 all las in dir
+#define SELECT_METHOD 0 //0 single building, 1 single las, 2 all las in dir
 
 #define LAS_PATH ASSETS_PATH "las/"
 
@@ -58,15 +58,15 @@ void Program::Execute() {
 	std::cout << "### Starting Data Load Process..." << std::endl;
 
 	//uint16_t select = 52578; //l-shape
-	uint16_t select = 24069; //top-t
-
-	std::string selectLas = "32_684000_4930000.las";
+	//uint16_t select = 24069; //top-t
+	//uint16_t select = 52148; //cube
+	//std::string selectLas = "32_684000_4930000.las";
 
 	//uint16_t select = 47924; //dozza
 	//std::string selectLas = "32_685000_4930000.las";
 
-	//uint16_t select = 24921; //coso strano ma bellino
-	//std::string selectLas = "32_686000_4928500.las";
+	uint16_t select = 24921; //coso strano ma bellino
+	std::string selectLas = "32_686000_4928500.las";
 
 	//std::string selectLas = "32_686000_4929500.las";
 
@@ -196,12 +196,19 @@ void Program::Execute() {
 
 		std::vector<MyPoint> mainCluster = Dbscan::GetMainCluster(std::span(targetPoints), 0.8, 10);
 
+		if (PRINT_TEMP)
+			std::cout << "Points main cluster: " << mainCluster.size() << std::endl;
+
 		time_acc_cluster += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - st);
 
 		if (mainCluster.size() == 0)
 			continue;
 		
 		st = std::chrono::high_resolution_clock::now();
+
+		if (SHOW_STEPS) {
+			UtilsCV::ShowPoints(mainCluster, 2.0, 10.0, false);
+		}
 
 		Grid grid;
 		grid.Init(mainCluster, 0.1, 2.0, 0.2);
@@ -211,6 +218,12 @@ void Program::Execute() {
 		time_acc_grid += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - st);
 
 		st = std::chrono::high_resolution_clock::now();
+
+		if (SHOW_STEPS) {
+			std::vector<std::vector<float>> hm = grid.GetHeightMat();
+
+			UtilsCV::Show(hm, ColoringMethod::HEIGHT_TO_COLOR);
+		}
 
 		std::vector<std::vector<float>> br = grid.GetBooleanRoof();
 
@@ -240,6 +253,9 @@ void Program::Execute() {
 		cv::Scalar point_ext_d(38, 135, 224);
 		cv::Scalar point_ridge(45, 224, 134);
 
+		int maxS = (br.size() > br[0].size()) ? br.size() : br[0].size();
+		int cs = (maxS / 300) + 2;
+
 		if (SHOW_STEPS) {
 			cv::Mat resImage = cv::Mat(cv::Size(br.size(), br[0].size()), CV_MAKETYPE(CV_8U, 3), cv::Scalar(255, 255, 255));
 
@@ -251,7 +267,7 @@ void Program::Execute() {
 
 			for (size_t i = 0; i < roofResult.size(); i++) {
 				cv::Point temp(static_cast<int>(std::round(roofResult[i].x)), static_cast<int>(std::round(roofResult[i].y)));
-				circle(resImage, temp, 1, point_ext, 2); // BGR
+				circle(resImage, temp, cs, point_ext, -1); // BGR
 			}
 
 			UtilsCV::Show(resImage);
@@ -293,7 +309,7 @@ void Program::Execute() {
 
 			for (size_t i = 0; i < roofResult.size(); i++) {
 				cv::Point temp(static_cast<int>(std::round(roofResult[i].x)), static_cast<int>(std::round(roofResult[i].y)));
-				circle(resImage, temp, 1, point_ext, 2); // BGR
+				circle(resImage, temp, cs, point_ext, -1); // BGR
 			}
 
 			UtilsCV::Show(resImage);
@@ -334,7 +350,7 @@ void Program::Execute() {
 
 			for (size_t i = 0; i < roofResult.size(); i++) {
 				cv::Point temp(static_cast<int>(std::round(roofResult[i].x)), static_cast<int>(std::round(roofResult[i].y)));
-				circle(resImage, temp, 1, point_ext, 2); // BGR
+				circle(resImage, temp, cs, point_ext, -1); // BGR
 			}
 
 			UtilsCV::Show(resImage);
@@ -387,6 +403,7 @@ void Program::Execute() {
 
 		if (SHOW_CLEAN_EDGES) {
 			cv::Mat resImage = cv::Mat(cv::Size(br.size(), br[0].size()), CV_8UC3, cv::Scalar(255,255,255));
+
 			for (const auto& edge : cleanEdges) {
 				cv::Point pt1(roofResult[edge.first].x, roofResult[edge.first].y);
 				cv::Point pt2(roofResult[edge.second].x, roofResult[edge.second].y);
@@ -398,9 +415,9 @@ void Program::Execute() {
 				cv::Point temp(static_cast<int>(std::round(roofResult[i].x)), static_cast<int>(std::round(roofResult[i].y)));
 				
 				if (i < precisionVal)
-					circle(resImage, temp, 1, point_ext, 2); // BGR
+					circle(resImage, temp, cs, point_ext, -1); // BGR
 				else 
-					circle(resImage, temp, 1, point_ext_d, 2); // BGR
+					circle(resImage, temp, cs, point_ext_d, -1); // BGR
 			}
 
 			UtilsCV::Show(resImage);
@@ -460,11 +477,14 @@ void Program::Execute() {
 
 		meshes.push_back(MyMesh(triangles));
 
-		if (PRINT_TEMP)
+		if (PRINT_TEMP) {
+			std::cout << "### Number of Triangles: " << triangles.size() << std::endl;
 			std::cout << "Mesh Done: " << building->GetCodiceOggetto() << std::endl;
+		}
 
 		if (SHOW_RESULT) {
 			cv::Mat resImage = cv::Mat(cv::Size(br.size(), br[0].size()), CV_8UC3, cv::Scalar(255,255,255));
+		
 			for (const auto& triangle : triangles2) {
 				cv::Point pt1(triangle.p1.x, triangle.p1.y);
 				cv::Point pt2(triangle.p2.x, triangle.p2.y);
@@ -477,11 +497,11 @@ void Program::Execute() {
 
 			for (size_t i = 0; i < roofResult.size(); i++) {
 				cv::Point temp(static_cast<int>(std::round(roofResult[i].x)), static_cast<int>(std::round(roofResult[i].y)));
-				circle(resImage, temp, 1, point_ext, 2); // BGR
+				circle(resImage, temp, cs, point_ext, -1); // BGR
 			}
 			for (size_t i = 0; i < ridgeResult.size(); i++) {
 				cv::Point temp(static_cast<int>(std::round(ridgeResult[i].x)), static_cast<int>(std::round(ridgeResult[i].y)));
-				circle(resImage, temp, 1, point_ridge, 2); // BGR
+				circle(resImage, temp, cs, point_ridge, -1); // BGR
 			}
 
 			UtilsCV::Show(resImage);
@@ -496,6 +516,7 @@ void Program::Execute() {
 		double avgTimeFilter = (time_acc_filter.count() * 1000) / tot;
 		double avgTimeCluster = (time_acc_cluster.count() * 1000) / tot;
 		double avgTimeGrid = (time_acc_grid.count() * 1000) / tot;
+		double avgTimeEdge = (time_acc_edge.count() * 1000) / tot;
 		double avgTimeTriangU = (time_acc_triangU.count() * 1000) / tot;
 		double avgTimeExtFilt = (time_acc_ext.count() * 1000) / tot;
 		double avgTimePoly = (time_acc_poly.count() * 1000) / tot;
@@ -508,6 +529,7 @@ void Program::Execute() {
 		double percTimeFilter = (avgTimeFilter / total) * 100;
 		double percTimeCluster = (avgTimeCluster / total) * 100;
 		double percTimeGrid = (avgTimeGrid / total) * 100;
+		double percTimeEdge = (avgTimeEdge / total) * 100;
 		double percTimeTriangU = (avgTimeTriangU / total) * 100;
 		double percTimeExtFilt = (avgTimeExtFilt / total) * 100;
 		double percTimePoly = (avgTimePoly / total) * 100;
@@ -521,6 +543,7 @@ void Program::Execute() {
 		std::cout << "### Avg. Time filter: " << avgTimeFilter << " ms (" << percTimeFilter << "%)\n";
 		std::cout << "### Avg. Time cluster: " << avgTimeCluster << " ms (" << percTimeCluster << "%)\n";
 		std::cout << "### Avg. Time grid: " << avgTimeGrid << " ms (" << percTimeGrid << "%)\n";
+		std::cout << "### Avg. Time edge: " << avgTimeEdge << " ms (" << percTimeEdge << "%)\n";
 		std::cout << "### Avg. Time triang unconstrained: " << avgTimeTriangU << " ms (" << percTimeTriangU << "%)\n";
 		std::cout << "### Avg. Time ext filt: " << avgTimeExtFilt << " ms (" << percTimeExtFilt << "%)\n";
 		std::cout << "### Avg. Time poly: " << avgTimePoly << " ms (" << percTimePoly << "%)\n";

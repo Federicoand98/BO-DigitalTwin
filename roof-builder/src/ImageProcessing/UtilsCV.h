@@ -23,15 +23,17 @@ struct RGBColor {
 
 static RGBColor HeightToRainbow(float z, float min, float max) {
     RGBColor color;
+
     if (z == 0.0f) {
-        color.r = 1.0f;
-        color.g = 1.0f;
-        color.b = 1.0f;
+        color.r = 255.0f;
+        color.g = 255.0f;
+        color.b = 255.0f;
     }
     else {
         float normalizedValue = (z - min) / (max - min);
 
-        float hue = normalizedValue * 360.0f;
+        // Adatta il range di hue per evitare la ripetizione del rosso agli estremi
+        float hue = normalizedValue * 310.0f; // Parte da 0 gradi e va fino a 310 gradi
         float saturation = 1.0f;
         float value = 1.0f;
 
@@ -43,35 +45,35 @@ static RGBColor HeightToRainbow(float z, float min, float max) {
 
         switch (h) {
         case 0:
-            color.r = static_cast<int>(value * 255);
-            color.g = static_cast<int>(t * 255);
-            color.b = static_cast<int>(p * 255);
+            color.r = value * 255;
+            color.g = t * 255;
+            color.b = p * 255;
             break;
         case 1:
-            color.r = static_cast<int>(q * 255);
-            color.g = static_cast<int>(value * 255);
-            color.b = static_cast<int>(p * 255);
+            color.r = q * 255;
+            color.g = value * 255;
+            color.b = p * 255;
             break;
         case 2:
-            color.r = static_cast<int>(p * 255);
-            color.g = static_cast<int>(value * 255);
-            color.b = static_cast<int>(t * 255);
+            color.r = p * 255;
+            color.g = value * 255;
+            color.b = t * 255;
             break;
         case 3:
-            color.r = static_cast<int>(p * 255);
-            color.g = static_cast<int>(q * 255);
-            color.b = static_cast<int>(value * 255);
+            color.r = p * 255;
+            color.g = q * 255;
+            color.b = value * 255;
             break;
         case 4:
-            color.r = static_cast<int>(t * 255);
-            color.g = static_cast<int>(p * 255);
-            color.b = static_cast<int>(value * 255);
+            color.r = t * 255;
+            color.g = p * 255;
+            color.b = value * 255;
             break;
         case 5:
         default:
-            color.r = static_cast<int>(value * 255);
-            color.g = static_cast<int>(p * 255);
-            color.b = static_cast<int>(q * 255);
+            color.r = value * 255;
+            color.g = p * 255;
+            color.b = q * 255;
             break;
         }
     }
@@ -159,14 +161,14 @@ public:
         float range_y = max_y - min_y;
         float max_range = std::max(range_x, range_y);
 
-        int w = (int)(max_range * scale);
-        int h = (int)(max_range * scale);
+        int w = (int)(range_x * scale);
+        int h = (int)(range_y * scale);
 
-        cv::Mat image = cv::Mat::zeros(h, w, CV_8UC3);
+        cv::Mat image = cv::Mat(cv::Size(w, h), CV_8UC3, cv::Scalar(255, 255, 255));
 
         for (const auto& point : targetPoints) {
-            int x = ((point.x - min_x) / max_range) * w;
-            int y = h - ((point.y - min_y) / max_range) * h;
+            int x = ((point.x - min_x) / range_x) * w;
+            int y = h - ((point.y - min_y) / range_y) * h;
 
             if (!filterZeros || (filterZeros && point.z > 0)) {
                 RGBColor color = HeightToRainbow(point.z, min_z, max_z);
@@ -200,6 +202,14 @@ public:
 
         cv::Mat res;
         cv::resize(image, res, cv::Size(), scale, scale, cv::INTER_CUBIC);
+
+        if (SAVE) {
+            if (res.channels() == 1 && res.at<uchar>(0, 0) != 255) {
+                res = 255 - res;
+            }
+            Save("out", res);
+        }
+
         cv::imshow("Result", res);
 
         cv::waitKey(0);
@@ -253,6 +263,9 @@ public:
                 if (m_ShowSteps) {
                     cv::Mat tempImg = cv::Mat(m_Image.size(), CV_8UC3, cv::Scalar(255, 255, 255));
 
+                    int maxS = (m_Image.size().height > m_Image.size().width) ? m_Image.size().height : m_Image.size().width;
+                    int cs = (maxS / 300) + 2;
+
                     for (int i = 0; i < m_Image.rows; i++) {
                         for (int j = 0; j < m_Image.cols; j++) {
                             if (m_Image.at<uchar>(i, j) > 0) {
@@ -261,7 +274,7 @@ public:
                         }
                     }
                     for (size_t i = 0; i < m_ResultPoint.size(); i++) {
-                        circle(tempImg, m_ResultPoint[i], 1, cv::Scalar(224, 183, 74), 2); // BGR
+                        circle(tempImg, m_ResultPoint[i], cs, cv::Scalar(224, 183, 74), -1); // BGR
                     }
 
                     UtilsCV::Show(tempImg, VIEW_SCALE);
