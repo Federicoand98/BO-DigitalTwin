@@ -1,7 +1,7 @@
 #pragma once
 
 #define VIEW_SCALE 2.0
-#define SAVE false
+#define SAVE true
 
 #include <vector>
 #include <math.h>
@@ -139,13 +139,28 @@ public:
         return image;
     }
 
-    static void ShowPoints(const std::vector<MyPoint>& targetPoints, float tol, int scale, bool filterZeros) {
+    static void ShowPoints(const std::vector<MyPoint>& targetPoints, float tol, int scale, bool filterZeros, std::vector<std::pair<MyPoint, MyPoint>> edges) {
         if (targetPoints.empty()) return;
 
-        float min_x = std::min_element(targetPoints.begin(), targetPoints.end(), [](MyPoint const a, MyPoint const b) { return a.x < b.x; })->x - tol;
-        float max_x = std::max_element(targetPoints.begin(), targetPoints.end(), [](MyPoint const a, MyPoint const b) { return a.x < b.x; })->x + tol;
-        float min_y = std::min_element(targetPoints.begin(), targetPoints.end(), [](MyPoint const a, MyPoint const b) { return a.y < b.y; })->y - tol;
-        float max_y = std::max_element(targetPoints.begin(), targetPoints.end(), [](MyPoint const a, MyPoint const b) { return a.y < b.y; })->y + tol;
+        float min_x = edges[0].first.x, max_x = edges[0].first.x;
+        float min_y = edges[0].first.y, max_y = edges[0].first.y;
+
+        for (const auto& edge : edges) {
+            min_x = std::min(min_x, edge.first.x);
+            max_x = std::max(max_x, edge.first.x);
+            min_y = std::min(min_y, edge.first.y);
+            max_y = std::max(max_y, edge.first.y);
+
+            min_x = std::min(min_x, edge.second.x);
+            max_x = std::max(max_x, edge.second.x);
+            min_y = std::min(min_y, edge.second.y);
+            max_y = std::max(max_y, edge.second.y);
+        }
+
+        min_x -= tol;
+        max_x += tol;
+        min_y -= tol;
+        max_y += tol;
 
         float min_z = std::numeric_limits<float>::max();
         float max_z = std::numeric_limits<float>::lowest();
@@ -165,6 +180,18 @@ public:
         int h = (int)(range_y * scale);
 
         cv::Mat image = cv::Mat(cv::Size(w, h), CV_8UC3, cv::Scalar(255, 255, 255));
+
+        cv::Scalar edgesColor(12, 12, 12);
+
+        for (int i = 0; i < edges.size(); i++) {
+            int x1 = ((edges[i].first.x - min_x) / range_x) * w;
+            int y1 = h - ((edges[i].first.y - min_y) / range_y) * h;
+
+            int x2 = ((edges[i].second.x - min_x) / range_x) * w;
+            int y2 = h - ((edges[i].second.y - min_y) / range_y) * h;
+
+            cv::line(image, cv::Point(x1, y1), cv::Point(x2, y2), edgesColor, 1);
+        }
 
         for (const auto& point : targetPoints) {
             int x = ((point.x - min_x) / range_x) * w;

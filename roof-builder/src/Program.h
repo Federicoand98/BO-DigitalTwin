@@ -22,9 +22,9 @@
 #define DEBUG 1
 #define PRINT_TEMP true
 
-#define SHOW_RESULT false
-#define SHOW_STEPS false
-#define SHOW_CLEAN_EDGES false 
+#define SHOW_RESULT true
+#define SHOW_STEPS true
+#define SHOW_CLEAN_EDGES true 
 
 #define SELECT_METHOD 0 //0 single building, 1 single las, 2 all las in dir
 
@@ -178,7 +178,7 @@ void Program::Execute() {
 			continue;
 
 		if (SHOW_STEPS) {
-			UtilsCV::ShowPoints(targetPoints, 2.0, 10.0, false);
+			UtilsCV::ShowPoints(targetPoints, 2.0, 10.0, false, building->GetEdges());
 		}
 
 		time_acc_filter += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - st);
@@ -207,7 +207,7 @@ void Program::Execute() {
 		st = std::chrono::high_resolution_clock::now();
 
 		if (SHOW_STEPS) {
-			UtilsCV::ShowPoints(mainCluster, 2.0, 10.0, false);
+			UtilsCV::ShowPoints(mainCluster, 2.0, 10.0, false, building->GetEdges());
 		}
 
 		Grid grid;
