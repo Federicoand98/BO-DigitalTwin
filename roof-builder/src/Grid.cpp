@@ -212,7 +212,7 @@ std::vector<std::vector<float>> Grid::GetSobelGradient() {
 }
 
 MyPoint Grid::GetGridPointCoord(int gridX, int gridY) {
-    // 0 - 0 in the opencv image is on top left not on bottom left (as in our matrix
+    // 0 - 0 in the opencv image is on top left not on bottom left (as in our matrix)
     float x = minX + cellSize * gridX;
     float y = maxY - cellSize * gridY;
 
@@ -220,7 +220,6 @@ MyPoint Grid::GetGridPointCoord(int gridX, int gridY) {
     for (const auto& point : points) {
         cloud.pts.push_back({ point.x, point.y, point.z });
     }
-
 
     nf::KDTreeSingleIndexAdaptor<nf::L2_Simple_Adaptor<float, PointCloud>, PointCloud, 2> kdtree
     (2, cloud, nf::KDTreeSingleIndexAdaptorParams(10 /* max leaf */));

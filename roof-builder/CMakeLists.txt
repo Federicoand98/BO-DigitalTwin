@@ -12,7 +12,7 @@ set(CMAKE_CXX_STANDARD 20)
 
 set(LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs")
 
-file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.h")
+file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.h" "src/*.c")
 
 FetchContent_Declare(
 	DataFrame
@@ -59,6 +59,8 @@ add_definitions(${PDAL_DEFINITIONS})
 set(GEOS_INCLUDE_DIRS ${geos_SOURCE_DIR}/include)
 set(GEOS_LIBRARIES ${geos_BINARY_DIR}/lib)
 include_directories(${GEOS_INCLUDE_DIRS})
+
+add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 
 add_executable (roof-builder ${SOURCES})
 

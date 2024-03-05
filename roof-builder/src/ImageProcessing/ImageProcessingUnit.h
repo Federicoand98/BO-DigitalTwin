@@ -60,6 +60,30 @@ public:
 
 	void Process(cv::Mat& ioMatrix) override {
 		cv::morphologyEx(ioMatrix, ioMatrix, m_Operator, m_Kernel, cv::Point(-1, -1), m_Iters);
+
+		cv::Mat kernelDiagonaleDilatazione = (cv::Mat_<uchar>(3, 3) << 0, 1, 0, 1, 1, 1, 0, 1, 0);
+
+		cv::dilate(ioMatrix, ioMatrix, kernelDiagonaleDilatazione);
+		
+		//dont consider inside holes if there are any
+		std::vector<std::vector<cv::Point>> contours;
+		cv::findContours(ioMatrix, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+		double maxArea = 0;
+		int maxAreaInd = -1;
+
+		for (size_t i = 0; i < contours.size(); ++i) {
+			double area = cv::contourArea(contours[i]);
+			if (area > maxArea) {
+				maxArea = area;
+				maxAreaInd = static_cast<int>(i);
+			}
+		}
+		
+		if (maxAreaInd != -1) {
+			ioMatrix = cv::Mat::zeros(ioMatrix.size(), CV_8U);
+			cv::drawContours(ioMatrix, contours, maxAreaInd, 255.0, 1);
+		}
 	}
 
 	std::vector<cv::Point2f> Finalize(cv::Mat& inputMatrix, int maxFeatures = 0) override {

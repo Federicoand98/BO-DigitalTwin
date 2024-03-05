@@ -11,6 +11,7 @@ std::shared_ptr<Building> BuildingFactory::CreateBuilding(const std::string& ent
 	float tolleranza;
 	std::vector<geos::geom::Coordinate> points;
 	std::unique_ptr<geos::geom::Polygon> polygon;
+	std::vector<std::string> tiles;
 	int i = 0;
 
 	while (std::getline(tokenStream, token, ';')) {
@@ -24,13 +25,37 @@ std::shared_ptr<Building> BuildingFactory::CreateBuilding(const std::string& ent
 			points = getPoints(token);
 			polygon = getPolygon(points);
 		}
-		else {
+		else if(i == 3) {
 			tolleranza = std::stof(token);
+		}
+		else {
+			tiles = getTiles(token);
 		}
 
 		i++;
 	}
-	return std::make_shared<Building>(codiceOggetto, quotaGronda, points, tolleranza, std::move(polygon));
+	return std::make_shared<Building>(codiceOggetto, quotaGronda, points, tolleranza, std::move(polygon), tiles);
+}
+
+std::vector<std::string> BuildingFactory::getTiles(const std::string& entry) {
+	std::string str = entry;
+
+	str.erase(std::remove(str.begin(), str.end(), '['), str.end());
+	str.erase(std::remove(str.begin(), str.end(), ']'), str.end());
+
+	std::stringstream ss(str);
+	std::string token;
+
+	std::vector<std::string> resultVector;
+
+	while (std::getline(ss, token, ',')) {
+		token.erase(std::remove(token.begin(), token.end(), '\''), token.end());
+		token.erase(std::remove(token.begin(), token.end(), '\''), token.end());
+
+		resultVector.push_back(token);
+	}
+	
+	return resultVector;
 }
 
 std::vector<geos::geom::Coordinate> BuildingFactory::getPoints(const std::string& entry) {
